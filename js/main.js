@@ -1,0 +1,710 @@
+/**
+ * LINDA TWIST — main.js
+ * Renders all dynamic content from SITE_CONFIG, then wires up
+ * navigation, the custom cursor, scroll reveals, GSAP/ScrollTrigger
+ * motion, the booking flow, and the gallery / testimonials / FAQ.
+ *
+ * BOOKING_INTEGRATION marks the single spot to wire a real
+ * scheduling provider in.
+ */
+(function(){
+  "use strict";
+
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const isTouch = window.matchMedia("(hover: none), (pointer: coarse)").matches;
+  // Pinned/parallax-heavy effects are reserved for larger, non-touch,
+  // motion-tolerant viewports — narrower screens get the same content
+  // with normal, lighter-weight scrolling instead.
+  const enableHeavyMotion = !prefersReducedMotion && !isTouch && window.innerWidth > 900;
+  const cfg = SITE_CONFIG;
+
+  document.getElementById("year").textContent = new Date().getFullYear();
+
+  /* ============================================================
+     RENDER: footer / nav-driven content from config
+     ============================================================ */
+  function renderFooter(){
+    const navUl = document.getElementById("footerNav");
+    cfg.nav.forEach(item=>{
+      const li = document.createElement("li");
+      li.innerHTML = `<a href="${item.href}">${item.label}</a>`;
+      navUl.appendChild(li);
+    });
+
+    const hoursUl = document.getElementById("footerHours");
+    cfg.business.hours.forEach(h=>{
+      const li = document.createElement("li");
+      li.textContent = `${h.day} — ${h.time}`;
+      hoursUl.appendChild(li);
+    });
+
+    const addr = document.getElementById("footerContact");
+    addr.innerHTML = `${cfg.business.address}<br>${cfg.business.phone}<br>${cfg.business.email}`;
+
+    ["fsInstagram","fsFacebook","fsTiktok","mmInstagram","mmFacebook","mmTiktok"].forEach(id=>{
+      const el = document.getElementById(id);
+      if(!el) return;
+      if(id.includes("Instagram")) el.href = cfg.business.instagram;
+      if(id.includes("Facebook")) el.href = cfg.business.facebook;
+      if(id.includes("Tiktok")) el.href = cfg.business.tiktok;
+    });
+  }
+  renderFooter();
+
+  /* ============================================================
+     LOADER
+     ============================================================ */
+  function runLoader(){
+    const loader = document.getElementById("loader");
+    const barEl = loader.querySelector(".loader-bar");
+
+    if(prefersReducedMotion){
+      loader.style.display = "none";
+      playHeroIntro();
+      return;
+    }
+
+    // Animate a real fill element (can't tween a ::after pseudo-element directly)
+    barEl.style.position = "relative";
+    barEl.style.overflow = "hidden";
+    const fill = document.createElement("div");
+    fill.style.cssText = "position:absolute;left:0;top:0;bottom:0;width:0%;background:var(--accent);";
+    barEl.appendChild(fill);
+    gsap.to(fill, { width: "100%", duration: 1.1, ease: "power2.inOut" });
+
+    const tl = gsap.timeline({
+      onComplete: ()=>{
+        loader.style.pointerEvents = "none";
+        playHeroIntro();
+      }
+    });
+    tl.to(loader, { yPercent: -100, duration: 0.9, ease: "power3.inOut", delay: 1.35 })
+      .set(loader, { display: "none" });
+  }
+
+  /* ============================================================
+     HERO INTRO ANIMATION
+     ============================================================ */
+  function playHeroIntro(){
+    if(prefersReducedMotion){
+      document.body.classList.remove("no-scroll");
+      return;
+    }
+    const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+    tl.fromTo("#heroMedia img", { scale: 1.16, autoAlpha: 0 }, { scale: 1.08, autoAlpha: 1, duration: 1.6 })
+      .fromTo(".hero-eyebrow span", { yPercent: 120 }, { yPercent: 0, duration: 0.8 }, "-=1.0")
+      .fromTo(".hero-headline .line span", { yPercent: 120 }, { yPercent: 0, duration: 0.9, stagger: 0.12 }, "-=0.5")
+      .fromTo("#heroSub", { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 0.8 }, "-=0.5")
+      .fromTo("#heroCtas .btn", { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.7, stagger: 0.1 }, "-=0.4");
+  }
+
+  document.body.classList.add("no-scroll");
+  window.addEventListener("load", ()=>{
+    document.body.classList.remove("no-scroll");
+    runLoader();
+  });
+  // Fallback in case load event already fired
+  setTimeout(()=>{
+    if(document.body.classList.contains("no-scroll")){
+      document.body.classList.remove("no-scroll");
+      runLoader();
+    }
+  }, 1200);
+
+  /* ============================================================
+     NAV: scroll state + mobile menu
+     ============================================================ */
+  const navEl = document.getElementById("siteNav");
+  window.addEventListener("scroll", ()=>{
+    navEl.classList.toggle("scrolled", window.scrollY > 60);
+  }, { passive: true });
+
+  const hamburger = document.getElementById("hamburger");
+  const mobileMenu = document.getElementById("mobileMenu");
+  let menuOpen = false;
+  function toggleMenu(open){
+    menuOpen = open;
+    hamburger.classList.toggle("open", open);
+    hamburger.setAttribute("aria-expanded", open);
+    mobileMenu.classList.toggle("open", open);
+    document.body.classList.toggle("no-scroll", open);
+    const links = mobileMenu.querySelectorAll(".mobile-menu-links a");
+    if(open){
+      gsap.to(links, { opacity: 1, y: 0, duration: 0.6, stagger: 0.07, ease: "power3.out", delay: 0.1 });
+    } else {
+      gsap.set(links, { opacity: 0, y: 24 });
+    }
+  }
+  hamburger.addEventListener("click", ()=> toggleMenu(!menuOpen));
+  mobileMenu.querySelectorAll("a").forEach(a=> a.addEventListener("click", ()=> toggleMenu(false)));
+
+  /* ============================================================
+     CUSTOM CURSOR (desktop only)
+     ============================================================ */
+  if(!isTouch && !prefersReducedMotion){
+    const dot = document.querySelector(".cursor-dot");
+    const ring = document.querySelector(".cursor-ring");
+    let mx=0,my=0, rx=0, ry=0;
+    window.addEventListener("mousemove", e=>{ mx=e.clientX; my=e.clientY; dot.style.transform=`translate(${mx}px,${my}px) translate(-50%,-50%)`; });
+    function loop(){
+      rx += (mx-rx)*0.16; ry += (my-ry)*0.16;
+      ring.style.transform = `translate(${rx}px,${ry}px) translate(-50%,-50%)`;
+      requestAnimationFrame(loop);
+    }
+    loop();
+
+    document.querySelectorAll("img, .masonry-item, .gallery-card, .meeting-image").forEach(el=>{
+      el.addEventListener("mouseenter", ()=>{ ring.classList.add("grow"); ring.querySelector("span").textContent="View"; });
+      el.addEventListener("mouseleave", ()=>{ ring.classList.remove("grow"); });
+    });
+    document.querySelectorAll("a[href='#booking'], .nav-book, #bookingNext").forEach(el=>{
+      el.addEventListener("mouseenter", ()=>{ ring.classList.add("grow"); ring.querySelector("span").textContent="Book"; });
+      el.addEventListener("mouseleave", ()=>{ ring.classList.remove("grow"); });
+    });
+  } else {
+    document.querySelector(".cursor-dot").style.display="none";
+    document.querySelector(".cursor-ring").style.display="none";
+  }
+
+  /* ============================================================
+     SCROLL REVEAL (IntersectionObserver)
+     ============================================================ */
+  const revealItems = document.querySelectorAll(".reveal");
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){
+        entry.target.classList.add("is-visible");
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15 });
+  revealItems.forEach(el=> io.observe(el));
+
+  /* ============================================================
+     GSAP / ScrollTrigger setup
+     ============================================================ */
+  gsap.registerPlugin(ScrollTrigger);
+
+  if(!prefersReducedMotion){
+    // Hero parallax
+    gsap.to("#heroMedia img", {
+      yPercent: 14, scale: 1.14, ease: "none",
+      scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: true }
+    });
+    gsap.to(".hero-content", {
+      yPercent: 22, ease: "none",
+      scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: true }
+    });
+
+    // Final CTA parallax
+    gsap.to("#finalCtaMedia img", {
+      yPercent: 16, ease: "none",
+      scrollTrigger: { trigger: ".final-cta", start: "top bottom", end: "bottom top", scrub: true }
+    });
+
+    // About image gentle parallax, independent from text
+    gsap.to("#aboutMedia", {
+      yPercent: -8, ease: "none",
+      scrollTrigger: { trigger: ".about", start: "top bottom", end: "bottom top", scrub: true }
+    });
+  }
+
+  /* ============================================================
+     MEETING MOMENT 1: image pinned, dark panel rises + shrinks image
+     ============================================================ */
+  if(enableHeavyMotion){
+    const m1 = gsap.timeline({
+      scrollTrigger: {
+        trigger: "#meeting1",
+        start: "top top",
+        end: "bottom top",
+        scrub: 0.6
+      }
+    });
+    m1.to("#meetingRise1", { yPercent: -100, ease: "none" }, 0)
+      .to("#meetingImage1", { scale: 0.86, borderRadius: "6px", ease: "none" }, 0);
+  }
+
+  /* ============================================================
+     THE ART OF THE TWIST — pinned panels
+     ============================================================ */
+  (function craft(){
+    const progressWrap = document.getElementById("craftProgress");
+    const rightWrap = document.getElementById("craftRight");
+
+    cfg.craftPanels.forEach((p, i)=>{
+      const dash = document.createElement("div");
+      dash.className = "dash" + (i===0 ? " active" : "");
+      dash.innerHTML = "<i></i>";
+      progressWrap.appendChild(dash);
+
+      const panel = document.createElement("div");
+      panel.className = "craft-panel" + (i===0 ? " active" : "");
+      panel.innerHTML = `
+        <div class="craft-panel-head">
+          <span class="num">${p.number}</span>
+          <span class="title">${p.title}</span>
+        </div>
+        <div class="craft-panel-img"><img src="${p.image}" alt="${p.title} hairstyle detail" loading="lazy"></div>
+      `;
+      rightWrap.appendChild(panel);
+    });
+
+    if(!enableHeavyMotion){
+      // Show everything statically stacked — lighter weight for
+      // reduced-motion, touch and narrow-viewport visitors.
+      document.querySelector(".craft-pin").style.cssText = "position:static; height:auto; display:block; padding:80px var(--gutter);";
+      rightWrap.style.cssText = "position:static; height:auto; margin-top:40px;";
+      rightWrap.querySelectorAll(".craft-panel").forEach(p=>{
+        p.style.cssText = "position:relative; opacity:1; visibility:visible; margin-bottom:36px;";
+      });
+      return;
+    }
+
+    const dashes = progressWrap.querySelectorAll(".dash");
+    const panels = rightWrap.querySelectorAll(".craft-panel");
+    const total = cfg.craftPanels.length;
+
+    ScrollTrigger.create({
+      trigger: "#craftSection",
+      start: "top top",
+      end: `+=${total * 100}%`,
+      pin: true,
+      scrub: 0.4,
+      onUpdate(self){
+        const idx = Math.min(total-1, Math.floor(self.progress * total));
+        dashes.forEach((d,i)=> d.classList.toggle("active", i<=idx));
+        panels.forEach((p,i)=> p.classList.toggle("active", i===idx));
+      }
+    });
+  })();
+
+  /* ============================================================
+     SERVICES — interactive list + preview
+     ============================================================ */
+  let activeServiceCategory = cfg.serviceCategories[0].id;
+
+  function renderServiceTabs(){
+    const wrap = document.getElementById("serviceTabs");
+    wrap.innerHTML = "";
+    cfg.serviceCategories.forEach(cat=>{
+      const btn = document.createElement("button");
+      btn.className = "service-tab" + (cat.id===activeServiceCategory ? " active" : "");
+      btn.textContent = cat.label;
+      btn.addEventListener("click", ()=>{
+        activeServiceCategory = cat.id;
+        renderServiceTabs();
+        renderServiceList();
+      });
+      wrap.appendChild(btn);
+    });
+  }
+
+  function renderServiceList(){
+    const list = document.getElementById("serviceList");
+    list.innerHTML = "";
+    const cat = cfg.serviceCategories.find(c=>c.id===activeServiceCategory);
+    const previewImg = document.getElementById("servicePreview");
+    const previewLabel = document.getElementById("previewLabel");
+
+    // clear old preview images
+    previewImg.querySelectorAll("img").forEach(i=>i.remove());
+
+    cat.services.forEach((svc, i)=>{
+      const row = document.createElement("div");
+      row.className = "service-row";
+      row.innerHTML = `
+        <span class="idx">${String(i+1).padStart(2,"0")}</span>
+        <span class="name-wrap">
+          <span class="name">${svc.name}</span>
+          <span class="desc">${svc.blurb}</span>
+        </span>
+        <span class="price">From ${svc.price}</span>
+        <span class="duration">${svc.duration}</span>
+        <span class="arrow-btn">→</span>
+      `;
+      // use featuredStyles / craftPanels images as a rotating placeholder set for preview
+      const imgUrl = cfg.featuredStyles[i % cfg.featuredStyles.length].image;
+      const img = document.createElement("img");
+      img.src = imgUrl;
+      img.alt = svc.name;
+      img.loading = "lazy";
+      previewImg.insertBefore(img, previewLabel);
+      if(i===0) img.classList.add("active");
+
+      row.addEventListener("mouseenter", ()=>{
+        previewImg.querySelectorAll("img").forEach(im=>im.classList.remove("active"));
+        img.classList.add("active");
+        previewLabel.textContent = svc.name;
+      });
+      row.addEventListener("click", ()=>{
+        window.location.hash = "#booking";
+        preselectBookingService(svc, cat.label);
+      });
+      list.appendChild(row);
+    });
+    previewLabel.textContent = cat.services[0].name;
+  }
+
+  renderServiceTabs();
+  renderServiceList();
+
+  /* ============================================================
+     FEATURED STYLES — masonry
+     ============================================================ */
+  (function masonry(){
+    const grid = document.getElementById("masonryGrid");
+    cfg.featuredStyles.forEach(s=>{
+      const item = document.createElement("div");
+      item.className = "masonry-item " + s.size;
+      item.innerHTML = `
+        <img src="${s.image}" alt="${s.name} hairstyle" loading="lazy">
+        <div class="masonry-caption">
+          <span>
+            <span class="cap-tag">${s.tag}</span><br>
+            <span class="cap-name">${s.name}</span>
+          </span>
+          <span class="cap-view">View Style</span>
+        </div>
+      `;
+      item.addEventListener("click", ()=>{
+        window.location.hash = "#booking";
+      });
+      grid.appendChild(item);
+    });
+  })();
+
+  /* ============================================================
+     TRANSFORMATION — scroll-driven reveal
+     ============================================================ */
+  (function transformation(){
+    document.getElementById("beforeImg").src = cfg.transformation.before;
+    document.getElementById("afterImg").src = cfg.transformation.after;
+
+    const afterLayer = document.getElementById("afterLayer");
+    const divider = document.getElementById("transformDivider");
+
+    function setProgress(p){
+      p = Math.max(0, Math.min(1, p));
+      afterLayer.style.clipPath = `inset(0 ${100-(p*100)}% 0 0)`;
+      divider.style.left = `${p*100}%`;
+    }
+    setProgress(0.02);
+
+    if(prefersReducedMotion){
+      setProgress(0.5);
+      return;
+    }
+
+    ScrollTrigger.create({
+      trigger: "#transformFrame",
+      start: "top 75%",
+      end: "bottom 40%",
+      scrub: 0.5,
+      onUpdate(self){ setProgress(self.progress); }
+    });
+
+    // Allow manual drag too, for a tactile interactive touch
+    const frame = document.getElementById("transformFrame");
+    let dragging = false;
+    function fromEvent(e){
+      const rect = frame.getBoundingClientRect();
+      const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+      setProgress(x/rect.width);
+    }
+    frame.addEventListener("mousedown", e=>{ dragging=true; fromEvent(e); });
+    window.addEventListener("mousemove", e=>{ if(dragging) fromEvent(e); });
+    window.addEventListener("mouseup", ()=> dragging=false);
+    frame.addEventListener("touchstart", e=>{ dragging=true; fromEvent(e); });
+    frame.addEventListener("touchmove", e=>{ if(dragging) fromEvent(e); });
+    frame.addEventListener("touchend", ()=> dragging=false);
+  })();
+
+  /* ============================================================
+     ABOUT
+     ============================================================ */
+  document.getElementById("aboutImg").src = cfg.about.image;
+  document.getElementById("aboutQuote").textContent = `“${cfg.about.quote}”`;
+
+  /* ============================================================
+     WHY US
+     ============================================================ */
+  (function whyUs(){
+    const grid = document.getElementById("whyGrid");
+    cfg.whyUs.forEach(item=>{
+      const el = document.createElement("div");
+      el.className = "why-item reveal";
+      el.innerHTML = `
+        <span class="num-label">${item.number}</span>
+        <div>
+          <h3>${item.title}</h3>
+          <p>${item.copy}</p>
+        </div>
+      `;
+      grid.appendChild(el);
+      io.observe(el);
+    });
+  })();
+
+  /* ============================================================
+     GALLERY — pinned horizontal scroll
+     ============================================================ */
+  (function gallery(){
+    const track = document.getElementById("galleryTrack");
+    cfg.gallery.forEach(g=>{
+      const card = document.createElement("div");
+      card.className = "gallery-card";
+      card.innerHTML = `<img src="${g.image}" alt="${g.caption}" loading="lazy"><span class="cap">${g.caption}</span>`;
+      track.appendChild(card);
+    });
+
+    if(!enableHeavyMotion) return; // native horizontal scroll fallback otherwise
+
+    requestAnimationFrame(()=>{
+      const trackWidth = track.scrollWidth;
+      const viewportW = window.innerWidth;
+      const distance = Math.max(0, trackWidth - viewportW + 100);
+
+      gsap.to(track, {
+        x: -distance,
+        ease: "none",
+        scrollTrigger: {
+          trigger: ".gallery-section",
+          start: "top top",
+          end: () => `+=${distance + window.innerHeight}`,
+          scrub: 0.6,
+          pin: ".gallery-pin",
+          invalidateOnRefresh: true
+        }
+      });
+    });
+  })();
+
+  /* ============================================================
+     TESTIMONIALS — auto-rotating quote
+     ============================================================ */
+  (function testimonials(){
+    const quoteEl = document.getElementById("testiQuote");
+    const metaEl = document.getElementById("testiMeta");
+    const dotsEl = document.getElementById("testiDots");
+    let idx = 0, timer;
+
+    cfg.testimonials.forEach((t,i)=>{
+      const dot = document.createElement("button");
+      dot.className = i===0 ? "active" : "";
+      dot.setAttribute("aria-label", `Show testimonial ${i+1}`);
+      dot.addEventListener("click", ()=> show(i, true));
+      dotsEl.appendChild(dot);
+    });
+
+    function show(i, manual){
+      idx = i;
+      const t = cfg.testimonials[idx];
+      if(prefersReducedMotion){
+        quoteEl.textContent = `“${t.quote}”`;
+      } else {
+        gsap.to(quoteEl, { opacity: 0, y: 10, duration: 0.35, onComplete: ()=>{
+          quoteEl.textContent = `“${t.quote}”`;
+          gsap.to(quoteEl, { opacity: 1, y: 0, duration: 0.5 });
+        }});
+      }
+      metaEl.innerHTML = `<strong>${t.name}</strong> — ${t.service}`;
+      dotsEl.querySelectorAll("button").forEach((d,di)=> d.classList.toggle("active", di===idx));
+      if(manual) restart();
+    }
+    function restart(){
+      clearInterval(timer);
+      timer = setInterval(()=> show((idx+1)%cfg.testimonials.length), 6000);
+    }
+    show(0);
+    restart();
+  })();
+
+  /* ============================================================
+     FAQ — accordion
+     ============================================================ */
+  (function faq(){
+    const list = document.getElementById("faqList");
+    cfg.faqs.forEach(f=>{
+      const item = document.createElement("div");
+      item.className = "faq-item";
+      item.innerHTML = `
+        <button class="faq-q">${f.q}<span class="plus"></span></button>
+        <div class="faq-a"><p>${f.a}</p></div>
+      `;
+      const btn = item.querySelector(".faq-q");
+      const ans = item.querySelector(".faq-a");
+      btn.addEventListener("click", ()=>{
+        const isOpen = item.classList.contains("open");
+        list.querySelectorAll(".faq-item.open").forEach(o=>{
+          o.classList.remove("open");
+          o.querySelector(".faq-a").style.maxHeight = null;
+        });
+        if(!isOpen){
+          item.classList.add("open");
+          ans.style.maxHeight = ans.scrollHeight + "px";
+        }
+      });
+      list.appendChild(item);
+    });
+  })();
+
+  /* ============================================================
+     BOOKING FLOW
+     ============================================================ */
+  const booking = {
+    step: 0,
+    service: null,
+    categoryLabel: null,
+    date: null,
+    time: null,
+  };
+
+  function allServicesFlat(){
+    const out = [];
+    cfg.serviceCategories.forEach(cat=> cat.services.forEach(s=> out.push({...s, category: cat.label})));
+    return out;
+  }
+
+  function renderBookingServiceGrid(){
+    const grid = document.getElementById("bookingServiceGrid");
+    grid.innerHTML = "";
+    allServicesFlat().forEach(s=>{
+      const opt = document.createElement("div");
+      opt.className = "book-option";
+      opt.innerHTML = `
+        <div class="opt-name">${s.name}</div>
+        <div class="opt-meta"><span>From ${s.price}</span><span>${s.duration}</span></div>
+      `;
+      opt.addEventListener("click", ()=>{
+        grid.querySelectorAll(".book-option").forEach(o=>o.classList.remove("selected"));
+        opt.classList.add("selected");
+        booking.service = s;
+        booking.categoryLabel = s.category;
+        updateChip();
+      });
+      grid.appendChild(opt);
+    });
+  }
+  renderBookingServiceGrid();
+
+  window.preselectBookingService = function(svc, categoryLabel){
+    booking.service = svc;
+    booking.categoryLabel = categoryLabel;
+    document.querySelectorAll("#bookingServiceGrid .book-option").forEach(opt=>{
+      opt.classList.toggle("selected", opt.querySelector(".opt-name").textContent === svc.name);
+    });
+    updateChip();
+    goToStep(1);
+  };
+
+  // Time slots (client-side generated placeholder availability)
+  const ALL_SLOTS = ["9:00 AM","10:00 AM","11:30 AM","1:00 PM","2:30 PM","4:00 PM","5:30 PM"];
+  function renderTimeSlots(){
+    const wrap = document.getElementById("timeSlots");
+    wrap.innerHTML = "";
+    ALL_SLOTS.forEach((slot,i)=>{
+      const el = document.createElement("div");
+      el.className = "time-slot" + (i===2 ? " disabled" : ""); // one slot marked booked, as placeholder realism
+      el.textContent = slot;
+      el.addEventListener("click", ()=>{
+        if(el.classList.contains("disabled")) return;
+        wrap.querySelectorAll(".time-slot").forEach(s=>s.classList.remove("selected"));
+        el.classList.add("selected");
+        booking.time = slot;
+        updateChip();
+      });
+      wrap.appendChild(el);
+    });
+  }
+  renderTimeSlots();
+
+  const dateInput = document.getElementById("bookingDate");
+  const today = new Date();
+  dateInput.min = today.toISOString().split("T")[0];
+  dateInput.addEventListener("change", ()=>{
+    booking.date = dateInput.value;
+    updateChip();
+  });
+
+  function updateChip(){
+    const chip = document.getElementById("bookingChip");
+    const parts = [];
+    if(booking.service) parts.push(booking.service.name);
+    if(booking.date) parts.push(new Date(booking.date+"T00:00").toLocaleDateString(undefined,{month:"short", day:"numeric"}));
+    if(booking.time) parts.push(booking.time);
+    chip.textContent = parts.join(" · ");
+    document.getElementById("bookingServiceReadout").value = booking.service ? booking.service.name : "";
+    document.getElementById("clientServiceReadout").value = booking.service ? booking.service.name : "";
+  }
+
+  const steps = document.querySelectorAll(".booking-steps .step");
+  const panels = document.querySelectorAll(".booking-panel");
+  const backBtn = document.getElementById("bookingBack");
+  const nextBtn = document.getElementById("bookingNext");
+
+  function goToStep(n){
+    booking.step = n;
+    steps.forEach((s,i)=>{
+      s.classList.toggle("active", i===n);
+      s.classList.toggle("done", i<n);
+    });
+    panels.forEach((p,i)=> p.classList.toggle("active", i===n));
+    backBtn.style.visibility = n===0 ? "hidden" : "visible";
+    nextBtn.textContent = n===3 ? "" : (n===2 ? "Confirm Appointment" : "Continue");
+    if(n!==3) nextBtn.innerHTML += ' <span class="arrow">→</span>';
+    document.getElementById("bookingNav").style.display = n===3 ? "none" : "flex";
+    if(n===3) buildConfirmation();
+    document.querySelector(".booking-shell").scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "start" });
+  }
+
+  function validateStep(n){
+    if(n===0 && !booking.service){ alert("Please choose a service to continue."); return false; }
+    if(n===1 && (!booking.date || !booking.time)){ alert("Please select a date and time to continue."); return false; }
+    if(n===2){
+      const name = document.getElementById("clientName").value.trim();
+      const email = document.getElementById("clientEmail").value.trim();
+      const phone = document.getElementById("clientPhone").value.trim();
+      if(!name || !email || !phone){ alert("Please fill in your name, email and phone to confirm."); return false; }
+      booking.name = name; booking.email = email; booking.phone = phone;
+      booking.notes = document.getElementById("clientNotes").value.trim();
+    }
+    return true;
+  }
+
+  nextBtn.addEventListener("click", ()=>{
+    if(!validateStep(booking.step)) return;
+    if(booking.step === 2){
+      /**
+       * BOOKING_INTEGRATION
+       * This is the single place a real scheduling backend gets wired in.
+       * Replace this block with, e.g.:
+       *   - a redirect/embed to a Calendly / Fresha / SimplyBook.me link
+       *     built from cfg.business.bookingUrl + query params, or
+       *   - a fetch() POST to a custom backend, optionally followed by
+       *     a Stripe deposit checkout session.
+       * The confirmation screen below renders from local `booking` state
+       * regardless of which integration is used.
+       */
+      goToStep(3);
+      return;
+    }
+    goToStep(Math.min(3, booking.step+1));
+  });
+  backBtn.addEventListener("click", ()=> goToStep(Math.max(0, booking.step-1)));
+
+  function buildConfirmation(){
+    const wrap = document.getElementById("confirmDetails");
+    const dateLabel = booking.date ? new Date(booking.date+"T00:00").toLocaleDateString(undefined,{weekday:"long", month:"long", day:"numeric"}) : "";
+    wrap.innerHTML = `
+      <div class="row"><span>Service</span><span>${booking.service ? booking.service.name : ""}</span></div>
+      <div class="row"><span>Date</span><span>${dateLabel}</span></div>
+      <div class="row"><span>Time</span><span>${booking.time || ""}</span></div>
+      <div class="row"><span>Duration</span><span>${booking.service ? booking.service.duration : ""}</span></div>
+      <div class="row"><span>Price</span><span>From ${booking.service ? booking.service.price : ""}</span></div>
+      <div class="row"><span>Salon</span><span>${cfg.business.address}</span></div>
+    `;
+    document.getElementById("confirmAddress").textContent = cfg.business.address;
+  }
+
+})();
