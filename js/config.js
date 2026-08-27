@@ -38,6 +38,42 @@ const SITE_CONFIG = {
     bookingUrl: "#booking"
   },
 
+  /**
+   * EMAIL CONFIRMATIONS (via EmailJS — https://www.emailjs.com)
+   * ------------------------------------------------------------
+   * This lets the booking form send a real confirmation email to the
+   * CLIENT's own inbox, plus an optional notification to the salon's
+   * inbox — with no backend server required. It's free for low volume.
+   *
+   * SETUP (about 5 minutes):
+   *   1. Create a free account at emailjs.com.
+   *   2. Add an "Email Service" and connect the salon's Gmail/Outlook/
+   *      other inbox — this is the address emails will be sent FROM.
+   *      Copy its Service ID into `serviceId` below.
+   *   3. Create an Email Template for the CLIENT confirmation. Use
+   *      merge fields in the template body such as {{to_email}},
+   *      {{client_name}}, {{service_name}}, {{date}}, {{time}},
+   *      {{duration}}, {{price}}, {{salon_address}}, {{notes}} — set
+   *      the template's "To Email" field to {{to_email}}. Copy its
+   *      Template ID into `clientTemplateId`.
+   *   4. (Optional) Create a second template that notifies the SALON
+   *      of a new booking — set its "To Email" field to the salon's
+   *      own address (hard-coded, not a merge field) and use the same
+   *      merge fields. Copy its Template ID into `ownerTemplateId`,
+   *      or leave blank to skip owner notifications.
+   *   5. Find the Public Key under Account → General, and paste it
+   *      into `publicKey`.
+   *
+   * Until these three values are filled in, the booking flow still
+   * works end-to-end in the browser — it just won't send real email.
+   */
+  emailjs: {
+    serviceId: "",         // PLACEHOLDER — e.g. "service_abc1234"
+    clientTemplateId: "",  // PLACEHOLDER — e.g. "template_client_confirm"
+    ownerTemplateId: "",   // PLACEHOLDER, optional — e.g. "template_owner_notify"
+    publicKey: ""          // PLACEHOLDER — e.g. "AbCdEfGhIjKlMnOp"
+  },
+
   nav: [
     { label: "Home",     href: "#home" },
     { label: "Services", href: "#services" },

@@ -1216,7 +1216,7 @@ section{ position: relative; }
   position:absolute; inset:0;
   background: linear-gradient(180deg, transparent 60%, rgba(0,0,0,.55) 100%);
 }
-@media (max-width: 700px){
+@media (max-width: 900px){
   .gallery-section{ height: auto; }
   .gallery-pin{ position: relative; height: auto; padding: 60px 0; }
   .gallery-track{ overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 20px; }

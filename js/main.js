@@ -18,6 +18,63 @@
   const enableHeavyMotion = !prefersReducedMotion && !isTouch && window.innerWidth > 900;
   const cfg = SITE_CONFIG;
 
+  /* ============================================================
+     EMAIL CONFIRMATIONS (EmailJS)
+     ============================================================ */
+  const emailCfg = cfg.emailjs || {};
+  const emailIsConfigured = !!(emailCfg.serviceId && emailCfg.clientTemplateId && emailCfg.publicKey);
+  if(emailIsConfigured && window.emailjs){
+    emailjs.init({ publicKey: emailCfg.publicKey });
+  }
+
+  /**
+   * Sends the client confirmation email (and, if configured, a
+   * separate owner-notification email) via EmailJS. Resolves with
+   * { sent: boolean, error?: string } — never throws, so a booking
+   * can always complete even if email sending fails or isn't set up.
+   */
+  async function sendBookingEmails(){
+    if(!emailIsConfigured || !window.emailjs){
+      console.warn("[Linda Twist] EmailJS isn't configured yet — see js/config.js → emailjs. Booking confirmed locally without sending real email.");
+      return { sent: false, reason: "not-configured" };
+    }
+
+    const dateLabel = booking.date
+      ? new Date(booking.date + "T00:00").toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+      : "";
+
+    const templateParams = {
+      to_email: booking.email,
+      client_name: booking.name,
+      client_phone: booking.phone,
+      service_name: booking.service ? booking.service.name : "",
+      service_category: booking.categoryLabel || "",
+      date: dateLabel,
+      time: booking.time || "",
+      duration: booking.service ? booking.service.duration : "",
+      price: booking.service ? booking.service.price : "",
+      salon_name: cfg.business.fullName,
+      salon_address: cfg.business.address,
+      salon_phone: cfg.business.phone,
+      notes: booking.notes || "—"
+    };
+
+    try{
+      await emailjs.send(emailCfg.serviceId, emailCfg.clientTemplateId, templateParams);
+
+      if(emailCfg.ownerTemplateId){
+        // Fire-and-forget: the client's confirmation matters more than
+        // the owner's copy, so a failure here doesn't affect the result.
+        emailjs.send(emailCfg.serviceId, emailCfg.ownerTemplateId, templateParams)
+          .catch(err => console.warn("[Linda Twist] Owner notification email failed:", err));
+      }
+      return { sent: true };
+    } catch(err){
+      console.error("[Linda Twist] Client confirmation email failed:", err);
+      return { sent: false, reason: "send-error", error: err };
+    }
+  }
+
   document.getElementById("year").textContent = new Date().getFullYear();
 
   /* ============================================================
@@ -211,8 +268,11 @@
 
   /* ============================================================
      MEETING MOMENT 1: image pinned, dark panel rises + shrinks image
+     — this relies on lightweight CSS `position: sticky` (not a JS
+     scroll-jacking pin), so it stays on for touch/mobile too; only
+     `prefers-reduced-motion` turns it off.
      ============================================================ */
-  if(enableHeavyMotion){
+  if(!prefersReducedMotion){
     const m1 = gsap.timeline({
       scrollTrigger: {
         trigger: "#meeting1",
@@ -251,12 +311,19 @@
     });
 
     if(!enableHeavyMotion){
-      // Show everything statically stacked — lighter weight for
-      // reduced-motion, touch and narrow-viewport visitors.
+      // Lighter weight for reduced-motion, touch and narrow-viewport
+      // visitors: normal document flow, but each panel still fades
+      // and slides in as it's scrolled into view.
       document.querySelector(".craft-pin").style.cssText = "position:static; height:auto; display:block; padding:80px var(--gutter);";
       rightWrap.style.cssText = "position:static; height:auto; margin-top:40px;";
       rightWrap.querySelectorAll(".craft-panel").forEach(p=>{
-        p.style.cssText = "position:relative; opacity:1; visibility:visible; margin-bottom:36px;";
+        p.style.cssText = "position:relative; visibility:visible; margin-bottom:36px;";
+        if(prefersReducedMotion){
+          p.style.opacity = "1";
+        } else {
+          p.classList.add("reveal");
+          io.observe(p);
+        }
       });
       return;
     }
@@ -451,14 +518,31 @@
      ============================================================ */
   (function gallery(){
     const track = document.getElementById("galleryTrack");
+    const cards = [];
     cfg.gallery.forEach(g=>{
       const card = document.createElement("div");
       card.className = "gallery-card";
       card.innerHTML = `<img src="${g.image}" alt="${g.caption}" loading="lazy"><span class="cap">${g.caption}</span>`;
       track.appendChild(card);
+      cards.push(card);
     });
 
-    if(!enableHeavyMotion) return; // native horizontal scroll fallback otherwise
+    if(!enableHeavyMotion){
+      // Native horizontal scroll-snap fallback: no scroll-jacking pin
+      // on touch/narrow screens, but cards still fade/slide in as they
+      // scroll into view so the section doesn't feel static.
+      if(!prefersReducedMotion){
+        cards.forEach(card=>{
+          card.classList.add("reveal");
+          io.observe(card);
+        });
+        document.querySelectorAll(".gallery-head .eyebrow, .gallery-head h2").forEach(el=>{
+          el.classList.add("reveal");
+          io.observe(el);
+        });
+      }
+      return;
+    }
 
     requestAnimationFrame(()=>{
       const trackWidth = track.scrollWidth;
@@ -643,7 +727,7 @@
   const backBtn = document.getElementById("bookingBack");
   const nextBtn = document.getElementById("bookingNext");
 
-  function goToStep(n){
+  function goToStep(n, emailResult){
     booking.step = n;
     steps.forEach((s,i)=>{
       s.classList.toggle("active", i===n);
@@ -654,7 +738,7 @@
     nextBtn.textContent = n===3 ? "" : (n===2 ? "Confirm Appointment" : "Continue");
     if(n!==3) nextBtn.innerHTML += ' <span class="arrow">→</span>';
     document.getElementById("bookingNav").style.display = n===3 ? "none" : "flex";
-    if(n===3) buildConfirmation();
+    if(n===3) buildConfirmation(emailResult);
     document.querySelector(".booking-shell").scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "start" });
   }
 
@@ -672,28 +756,32 @@
     return true;
   }
 
-  nextBtn.addEventListener("click", ()=>{
+  nextBtn.addEventListener("click", async ()=>{
     if(!validateStep(booking.step)) return;
     if(booking.step === 2){
       /**
        * BOOKING_INTEGRATION
-       * This is the single place a real scheduling backend gets wired in.
-       * Replace this block with, e.g.:
-       *   - a redirect/embed to a Calendly / Fresha / SimplyBook.me link
-       *     built from cfg.business.bookingUrl + query params, or
-       *   - a fetch() POST to a custom backend, optionally followed by
-       *     a Stripe deposit checkout session.
-       * The confirmation screen below renders from local `booking` state
-       * regardless of which integration is used.
+       * Real email sending happens in sendBookingEmails() (EmailJS) above —
+       * configure the three values in js/config.js → emailjs to activate it.
+       * This is also the spot to add a scheduling backend (Calendly, Fresha,
+       * Square, SimplyBook.me, a custom API + Stripe deposit, etc.) alongside
+       * or instead of the email step. The confirmation screen renders from
+       * local `booking` state regardless of which integrations are wired in.
        */
-      goToStep(3);
+      const originalLabel = nextBtn.innerHTML;
+      nextBtn.disabled = true;
+      nextBtn.innerHTML = "Sending confirmation…";
+      const result = await sendBookingEmails();
+      nextBtn.disabled = false;
+      nextBtn.innerHTML = originalLabel;
+      goToStep(3, result);
       return;
     }
     goToStep(Math.min(3, booking.step+1));
   });
   backBtn.addEventListener("click", ()=> goToStep(Math.max(0, booking.step-1)));
 
-  function buildConfirmation(){
+  function buildConfirmation(emailResult){
     const wrap = document.getElementById("confirmDetails");
     const dateLabel = booking.date ? new Date(booking.date+"T00:00").toLocaleDateString(undefined,{weekday:"long", month:"long", day:"numeric"}) : "";
     wrap.innerHTML = `
@@ -705,6 +793,22 @@
       <div class="row"><span>Salon</span><span>${cfg.business.address}</span></div>
     `;
     document.getElementById("confirmAddress").textContent = cfg.business.address;
+
+    const introEl = document.querySelector(".confirmation p.body-md");
+    const statusEl = document.getElementById("emailStatusNote");
+    if(emailResult && emailResult.sent){
+      introEl.textContent = `A confirmation has been sent to ${booking.email}. We can't wait to see you.`;
+      statusEl.textContent = "";
+    } else if(emailResult && emailResult.reason === "not-configured"){
+      introEl.textContent = "Your appointment is booked below. We can't wait to see you.";
+      statusEl.textContent = "Note: email confirmations aren't connected yet — see js/config.js → emailjs to enable them.";
+    } else if(emailResult && emailResult.reason === "send-error"){
+      introEl.textContent = "Your appointment is booked below. We can't wait to see you.";
+      statusEl.textContent = `We couldn't send an email confirmation to ${booking.email} just now — please save these details, and we'll follow up directly.`;
+    } else {
+      introEl.textContent = "Your appointment is booked below. We can't wait to see you.";
+      statusEl.textContent = "";
+    }
   }
 
 })();
