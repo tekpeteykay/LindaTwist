@@ -7,7 +7,7 @@
  * BOOKING_INTEGRATION marks the single spot to wire a real
  * scheduling provider in.
  */
-(function(){
+(async function(){
   "use strict";
 
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -16,6 +16,11 @@
   // motion-tolerant viewports — narrower screens get the same content
   // with normal, lighter-weight scrolling instead.
   const enableHeavyMotion = !prefersReducedMotion && !isTouch && window.innerWidth > 900;
+
+  // Wait for the CMS content fetch (js/data-loader.js) to finish merging
+  // live Supabase data into SITE_CONFIG before rendering anything. This
+  // resolves immediately if Supabase isn't configured, or on fetch failure.
+  if(window.LINDA_TWIST_READY) await window.LINDA_TWIST_READY;
   const cfg = SITE_CONFIG;
 
   /* ============================================================
@@ -75,6 +80,42 @@
     }
   }
 
+  /**
+   * Writes the booking to Supabase (if configured) so it appears in
+   * the admin dashboard's Bookings list and Calendar, and logs a
+   * "New booking received" activity entry. Never throws — a booking
+   * still completes for the customer even if this fails.
+   */
+  async function saveBookingToSupabase(){
+    if(!SUPABASE_CONFIGURED) return { saved: false, reason: "not-configured" };
+
+    try{
+      const { error } = await supabaseClient.from("bookings").insert({
+        service_id: booking.service && booking.service.id ? booking.service.id : null,
+        service_name: booking.service ? booking.service.name : "",
+        category_name: booking.categoryLabel || "",
+        customer_name: booking.name,
+        customer_email: booking.email,
+        customer_phone: booking.phone,
+        appointment_date: booking.date,
+        appointment_time: booking.time,
+        duration_text: booking.service ? booking.service.duration : "",
+        price_text: booking.service ? booking.service.price : "",
+        customer_notes: booking.notes || null
+      });
+      if(error) throw error;
+
+      window.logActivity && window.logActivity(
+        "booking_created",
+        `New booking: ${booking.name} — ${booking.service ? booking.service.name : ""} on ${booking.date} at ${booking.time}`
+      );
+      return { saved: true };
+    } catch(err){
+      console.error("[Linda Twist] Saving booking to Supabase failed:", err);
+      return { saved: false, reason: "save-error", error: err };
+    }
+  }
+
   document.getElementById("year").textContent = new Date().getFullYear();
 
   /* ============================================================
@@ -107,6 +148,110 @@
     });
   }
   renderFooter();
+
+  /* ============================================================
+     NAVIGATION — header + mobile menu, rendered from cfg.nav so a
+     change in the CMS's Navigation manager is reflected everywhere.
+     ============================================================ */
+  (function renderNav(){
+    document.getElementById("navLinks").innerHTML = cfg.nav.map(n => `<a href="${n.href}">${n.label}</a>`).join("");
+    const mobileLinks = document.querySelector(".mobile-menu-links");
+    mobileLinks.innerHTML = cfg.nav.map(n => `<a href="${n.href}">${n.label}</a>`).join("");
+    mobileLinks.querySelectorAll("a").forEach(a => a.addEventListener("click", ()=> toggleMenu(false)));
+  })();
+
+  /* ============================================================
+     SEO — apply CMS-edited title/description if present
+     ============================================================ */
+  (function applySeo(){
+    const seo = cfg._seo;
+    if(!seo) return;
+    if(seo.title) document.title = seo.title;
+    if(seo.description){
+      const tag = document.querySelector('meta[name="description"]');
+      if(tag) tag.setAttribute("content", seo.description);
+    }
+    if(seo.ogImage){
+      const og = document.querySelector('meta[property="og:image"]');
+      if(og) og.setAttribute("content", seo.ogImage);
+    }
+  })();
+
+  /* ============================================================
+     PROMO BANNER
+     ============================================================ */
+  (function applyPromo(){
+    const promo = cfg._promo;
+    if(!promo) return;
+    const banner = document.getElementById("promoBanner");
+    document.getElementById("promoBannerText").innerHTML = `${promo.title} — <b>${promo.discount}</b>${promo.code ? ` · Code <b>${promo.code}</b>` : ""}`;
+    banner.style.display = "flex";
+    document.getElementById("promoBannerClose").addEventListener("click", ()=>{ banner.style.display = "none"; });
+  })();
+
+  /* ============================================================
+     CONTACT FORM (Get In Touch)
+     ============================================================ */
+  (function contactForm(){
+    const form = document.getElementById("contactForm");
+    const status = document.getElementById("contactStatus");
+    form.addEventListener("submit", async (e)=>{
+      e.preventDefault();
+      const name = document.getElementById("contactName").value.trim();
+      const email = document.getElementById("contactEmail").value.trim();
+      const phone = document.getElementById("contactPhone").value.trim();
+      const message = document.getElementById("contactMessage").value.trim();
+      if(!name || !email || !message) return;
+
+      const btn = document.getElementById("contactSubmit");
+      btn.disabled = true;
+      const originalLabel = btn.innerHTML;
+      btn.innerHTML = "Sending…";
+
+      if(SUPABASE_CONFIGURED){
+        try{
+          const { error } = await supabaseClient.from("messages").insert({ name, email, phone: phone || null, message });
+          if(error) throw error;
+          status.textContent = "Thanks — we'll get back to you soon.";
+          form.reset();
+          window.logActivity && window.logActivity("message_received", `New enquiry from ${name}`);
+        } catch(err){
+          console.error(err);
+          status.textContent = `Couldn't send that just now — please email us directly at ${cfg.business.email}.`;
+        }
+      } else {
+        // Fallback with no backend configured: hand off to the visitor's email client.
+        window.location.href = `mailto:${cfg.business.email}?subject=${encodeURIComponent("Enquiry from "+name)}&body=${encodeURIComponent(message + "\n\n" + email + " " + phone)}`;
+        status.textContent = "Opening your email client…";
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = originalLabel;
+    });
+  })();
+
+  /* ============================================================
+     HERO OVERRIDE — apply CMS-edited heading/subheading/image
+     (from Homepage settings in the admin dashboard) while keeping
+     the per-line reveal-animation structure intact.
+     ============================================================ */
+  (function applyHeroOverride(){
+    const hero = cfg._hero;
+    if(!hero) return;
+
+    if(hero.heading){
+      const wrap = document.querySelector(".hero-headline");
+      wrap.innerHTML = hero.heading.split("\n").map(line =>
+        `<span class="line"><span>${line}</span></span>`
+      ).join("");
+    }
+    if(hero.subheading){
+      document.getElementById("heroSub").textContent = hero.subheading;
+    }
+    if(hero.image){
+      document.querySelector("#heroMedia img").src = hero.image;
+    }
+  })();
 
   /* ============================================================
      LOADER
@@ -682,15 +827,17 @@
     goToStep(1);
   };
 
-  // Time slots (client-side generated placeholder availability)
+  // Time slots — real availability once Supabase is connected: booked
+  // times for the selected date are fetched and disabled live.
   const ALL_SLOTS = ["9:00 AM","10:00 AM","11:30 AM","1:00 PM","2:30 PM","4:00 PM","5:30 PM"];
-  function renderTimeSlots(){
+  function renderTimeSlots(bookedTimes){
     const wrap = document.getElementById("timeSlots");
     wrap.innerHTML = "";
-    ALL_SLOTS.forEach((slot,i)=>{
+    ALL_SLOTS.forEach((slot)=>{
       const el = document.createElement("div");
-      el.className = "time-slot" + (i===2 ? " disabled" : ""); // one slot marked booked, as placeholder realism
-      el.textContent = slot;
+      const isBooked = (bookedTimes || []).includes(slot);
+      el.className = "time-slot" + (isBooked ? " disabled" : "");
+      el.textContent = isBooked ? `${slot} · Booked` : slot;
       el.addEventListener("click", ()=>{
         if(el.classList.contains("disabled")) return;
         wrap.querySelectorAll(".time-slot").forEach(s=>s.classList.remove("selected"));
@@ -703,12 +850,40 @@
   }
   renderTimeSlots();
 
+  /**
+   * Looks up already-booked times for a given date from Supabase, so
+   * two customers can't be offered the same slot. Returns [] if
+   * Supabase isn't configured or the lookup fails — the site simply
+   * shows every slot as open in that case, matching prior behaviour.
+   */
+  async function fetchBookedTimes(dateStr){
+    if(!SUPABASE_CONFIGURED || !dateStr) return [];
+    try{
+      const { data, error } = await supabaseClient
+        .from("bookings")
+        .select("appointment_time")
+        .eq("appointment_date", dateStr)
+        .neq("status", "cancelled");
+      if(error) throw error;
+      return (data || []).map(r => r.appointment_time);
+    } catch(err){
+      console.warn("[Linda Twist] Availability lookup failed — showing all times as open.", err);
+      return [];
+    }
+  }
+
   const dateInput = document.getElementById("bookingDate");
   const today = new Date();
   dateInput.min = today.toISOString().split("T")[0];
-  dateInput.addEventListener("change", ()=>{
+  dateInput.addEventListener("change", async ()=>{
     booking.date = dateInput.value;
+    booking.time = null;
     updateChip();
+    const wrap = document.getElementById("timeSlots");
+    wrap.style.opacity = "0.5";
+    const bookedTimes = await fetchBookedTimes(booking.date);
+    wrap.style.opacity = "1";
+    renderTimeSlots(bookedTimes);
   });
 
   function updateChip(){
@@ -770,11 +945,14 @@
        */
       const originalLabel = nextBtn.innerHTML;
       nextBtn.disabled = true;
-      nextBtn.innerHTML = "Sending confirmation…";
-      const result = await sendBookingEmails();
+      nextBtn.innerHTML = "Confirming your appointment…";
+      const [emailResult] = await Promise.all([
+        sendBookingEmails(),
+        saveBookingToSupabase()
+      ]);
       nextBtn.disabled = false;
       nextBtn.innerHTML = originalLabel;
-      goToStep(3, result);
+      goToStep(3, emailResult);
       return;
     }
     goToStep(Math.min(3, booking.step+1));

@@ -1397,3 +1397,49 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   transition: top .3s var(--ease);
 }
 .skip-link:focus{ top: 12px; }
+
+/* ============================================================
+   PROMO BANNER
+   ============================================================ */
+.promo-banner{
+  position: relative;
+  z-index: 950;
+  background: var(--espresso);
+  color: var(--ivory);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 10px 44px 10px var(--gutter);
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+.promo-banner b{ color: var(--accent-tint); }
+.promo-banner button{
+  position: absolute;
+  right: 14px; top: 50%;
+  transform: translateY(-50%);
+  color: rgba(251,248,243,0.6);
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px;
+}
+.promo-banner button:hover{ color: var(--ivory); }
+
+/* ============================================================
+   CONTACT / GET IN TOUCH
+   ============================================================ */
+.contact{ background: var(--ivory); }
+.contact-shell{
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: clamp(30px, 6vw, 80px);
+  align-items: start;
+  max-width: 920px;
+  margin: 0 auto;
+}
+.contact-form .booking-field{ margin-bottom: 16px; }
+@media (max-width: 800px){
+  .contact-shell{ grid-template-columns: 1fr; }
+}

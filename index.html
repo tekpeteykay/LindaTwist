@@ -36,6 +36,11 @@
 <div class="cursor-ring" aria-hidden="true"><span></span></div>
 
 <!-- ============ NAV ============ -->
+<div class="promo-banner" id="promoBanner" style="display:none;">
+  <span id="promoBannerText"></span>
+  <button id="promoBannerClose" aria-label="Dismiss">&times;</button>
+</div>
+
 <header class="nav" id="siteNav">
   <a href="#home" class="nav-logo">
     <img src="assets/logo.png" alt="Linda Twist logo">
@@ -373,6 +378,29 @@
     </div>
   </section>
 
+  <!-- ============ GET IN TOUCH (contact / enquiries) ============ -->
+  <section class="contact section-pad-sm" id="contact">
+    <div class="container">
+      <div class="contact-shell">
+        <div>
+          <span class="eyebrow reveal">Get In Touch</span>
+          <h2 class="display-md reveal" style="margin-top:10px;">Have a question before booking?</h2>
+          <p class="body-md reveal" style="margin-top:10px; max-width:380px;">Send us a message and we'll get back to you — for booking a specific appointment, use Book Your Appointment above instead.</p>
+        </div>
+        <form class="contact-form reveal" id="contactForm">
+          <div class="booking-field-row">
+            <div class="booking-field"><label for="contactName">Name</label><input type="text" id="contactName" required></div>
+            <div class="booking-field"><label for="contactEmail">Email</label><input type="email" id="contactEmail" required></div>
+          </div>
+          <div class="booking-field"><label for="contactPhone">Phone (optional)</label><input type="tel" id="contactPhone"></div>
+          <div class="booking-field"><label for="contactMessage">Message</label><textarea id="contactMessage" rows="3" required></textarea></div>
+          <button type="submit" class="btn btn-primary btn-sm" id="contactSubmit">Send Message <span class="arrow">→</span></button>
+          <p class="confirm-note" id="contactStatus" style="margin-top:12px;"></p>
+        </form>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <!-- ============ FOOTER ============ -->
@@ -418,7 +446,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-config.js"></script>
 <script src="js/config.js"></script>
+<script src="js/data-loader.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>
