@@ -226,6 +226,46 @@
   })();
 
   /* ============================================================
+     LOGGED-IN CUSTOMER AWARENESS
+     ------------------------------------------------------------
+     If the visitor is signed into a genuine customer account (via
+     account.html, same site), show their name in the nav instead of
+     "My Account", and keep their details in memory so the booking
+     form can auto-fill itself in the next block below. This never
+     applies to a staff session — only a real customer_accounts row
+     counts, same guard used when attaching bookings to an account.
+     ============================================================ */
+  let signedInCustomer = null;
+  (async function checkCustomerSession(){
+    if(!SUPABASE_CONFIGURED) return;
+    try{
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if(!session) return;
+      const { data: account } = await supabaseClient.from("customer_accounts").select("*").eq("id", session.user.id).single();
+      if(!account) return;
+
+      signedInCustomer = account;
+      const firstName = (account.full_name || "").split(" ")[0] || "there";
+      const label = `Hi, ${firstName}`;
+      const navLink = document.getElementById("navAccountLink");
+      if(navLink) navLink.textContent = label;
+      document.querySelectorAll(".mobile-menu-foot a[href='account.html']").forEach(a=> a.textContent = label);
+
+      prefillBookingDetailsIfCustomer();
+    } catch(err){ /* not a customer session — nav stays as "My Account" */ }
+  })();
+
+  function prefillBookingDetailsIfCustomer(){
+    if(!signedInCustomer) return;
+    const nameField = document.getElementById("clientName");
+    const emailField = document.getElementById("clientEmail");
+    const phoneField = document.getElementById("clientPhone");
+    if(nameField && !nameField.value) nameField.value = signedInCustomer.full_name || "";
+    if(emailField && !emailField.value) emailField.value = signedInCustomer.email || "";
+    if(phoneField && !phoneField.value) phoneField.value = signedInCustomer.phone || "";
+  }
+
+  /* ============================================================
      SEO — apply CMS-edited title/description if present
      ============================================================ */
   (function applySeo(){
@@ -1086,6 +1126,7 @@
       s.classList.toggle("done", i<n);
     });
     panels.forEach((p,i)=> p.classList.toggle("active", i===n));
+    if(n===2) prefillBookingDetailsIfCustomer();
     backBtn.style.visibility = n===0 ? "hidden" : "visible";
     nextBtn.textContent = n===3 ? "" : (n===2 ? "Confirm Appointment" : "Continue");
     if(n!==3) nextBtn.innerHTML += ' <span class="arrow">→</span>';
@@ -1124,12 +1165,23 @@
       const originalLabel = nextBtn.innerHTML;
       nextBtn.disabled = true;
       nextBtn.innerHTML = "Confirming your appointment…";
-      const [emailResult] = await Promise.all([
+      const [emailResult, saveResult] = await Promise.all([
         sendBookingEmails(),
         saveBookingToSupabase()
       ]);
       nextBtn.disabled = false;
       nextBtn.innerHTML = originalLabel;
+
+      if(!saveResult.saved){
+        // The actual database write failed — this must never be treated as
+        // a successful booking, even if the confirmation email happened to
+        // send. Tell the customer plainly rather than showing a false
+        // confirmation screen for an appointment that doesn't exist.
+        alert("Sorry — we couldn't save your appointment just now. Please try again, or contact us directly to book. (If this keeps happening, mention: booking save failed.)");
+        console.error("[Linda Twist] Booking was NOT saved:", saveResult);
+        return;
+      }
+
       goToStep(3, emailResult);
       return;
     }
