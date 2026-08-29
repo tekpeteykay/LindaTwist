@@ -133,11 +133,14 @@
       .single();
 
     if(error || !profile){
-      // Signed in but no profile row (shouldn't normally happen — the
-      // schema's trigger creates one automatically on sign-up).
+      // No staff profile for this login — most commonly because this is
+      // actually a customer account (customers and staff are entirely
+      // separate systems; see account.html for the customer side).
+      // Deliberately NOT signing them out here: this admin page has no
+      // business destroying a session that may be perfectly valid and
+      // in active use elsewhere (e.g. a customer's account.html tab).
       loginScreen.style.display = "flex";
-      showError("Your account has no dashboard profile yet. Contact a Linda Twist admin.");
-      await supabaseClient.auth.signOut();
+      showError("This login isn't recognised as staff access. If you're a customer, please use the account page on the main site instead.");
       return { authed: false };
     }
 

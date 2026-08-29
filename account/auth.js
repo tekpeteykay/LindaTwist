@@ -124,7 +124,7 @@
     try{
       const { data, error } = await supabaseClient.auth.signUp({
         email, password,
-        options: { data: { full_name, phone, referred_by_code } }
+        options: { data: { full_name, phone, referred_by_code, account_type: "customer" } }
       });
       if(error) throw error;
 
@@ -193,11 +193,12 @@
       .single();
 
     if(error || !account){
-      // Signed in but no customer_accounts row — most likely this is a
-      // STAFF login, not a customer one. Send them to the right place.
+      // No matching customer account for this login. This account page
+      // is exclusively for customers — it has no awareness of, or
+      // connection to, the separate staff dashboard.
       authShell.style.display = "flex";
       dashShell.style.display = "none";
-      showError("This looks like a staff login — head to admin.html instead.");
+      showError("We couldn't find an account for that login. Please check your details, or create a new account.");
       return { authed: false };
     }
 
