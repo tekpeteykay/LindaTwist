@@ -1443,3 +1443,155 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 @media (max-width: 800px){
   .contact-shell{ grid-template-columns: 1fr; }
 }
+
+/* ---------------- Account link in nav ---------------- */
+#navAccountLink{
+  color: var(--ivory);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: color .5s var(--ease);
+}
+.nav.scrolled #navAccountLink{ color: var(--espresso); }
+@media (max-width: 900px){
+  #navAccountLink{ display: none; }
+}
+
+/* ============================================================
+   CURRENT OFFERS
+   ============================================================ */
+.offers{ background: var(--cream); }
+.offers-grid{ display: grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap: 20px; }
+.offer-card{
+  background: var(--ivory);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.offer-card .img{ height: 160px; background: var(--cream) center/cover no-repeat; }
+.offer-card .body{ padding: 20px 22px; }
+.offer-card .body h3{ font-family: var(--font-display); font-size: 1.25rem; }
+.offer-card .body p{ font-size: 13.5px; color: var(--chocolate); margin-top: 8px; }
+.offer-card .code-row{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.offer-card .code{ font-family: var(--font-display); font-weight: 700; color: var(--accent-dark); font-size: 1rem; }
+.offer-card .copy-btn{
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  transition: all .3s var(--ease);
+}
+.offer-card .copy-btn:hover{ background: var(--espresso); border-color: var(--espresso); color: var(--ivory); }
+
+/* ============================================================
+   REFERRAL PROGRAM PROMO
+   ============================================================ */
+.referral-promo{ background: var(--espresso); color: var(--ivory); }
+.referral-promo-shell{
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: clamp(30px, 6vw, 70px);
+  align-items: center;
+}
+.referral-promo-code{
+  background: rgba(251,248,243,0.05);
+  border: 1px solid rgba(251,248,243,0.15);
+  border-radius: 3px;
+  padding: 32px 30px;
+  text-align: center;
+}
+.referral-sample-chip{
+  display: inline-block;
+  margin-top: 16px;
+  padding: 14px 24px;
+  background: var(--accent);
+  color: var(--ivory);
+  border-radius: 4px;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  letter-spacing: 0.05em;
+}
+@media (max-width: 800px){
+  .referral-promo-shell{ grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   COOKIE CONSENT
+   ============================================================ */
+.cookie-banner{
+  position: fixed;
+  left: 20px; right: 20px; bottom: 20px;
+  z-index: 1800;
+  background: var(--ivory);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+  padding: 22px 26px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 900px;
+  margin: 0 auto;
+  transform: translateY(140%);
+  transition: transform .5s var(--ease);
+}
+.cookie-banner.show{ transform: translateY(0); }
+.cookie-banner-text p{ font-size: 13px; line-height: 1.6; color: var(--chocolate); max-width: 560px; }
+.cookie-banner-text strong{ color: var(--espresso); }
+.cookie-banner-actions{ display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+
+.cookie-modal-overlay{
+  position: fixed; inset: 0;
+  z-index: 1900;
+  background: rgba(33,20,16,0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.cookie-modal-overlay.show{ display: flex; }
+.cookie-modal{
+  background: var(--ivory);
+  border-radius: 6px;
+  padding: 30px 32px;
+  max-width: 440px;
+  width: 100%;
+}
+.cookie-pref-row{
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.cookie-pref-row:last-of-type{ border-bottom: none; }
+.cookie-pref-title{ font-weight: 600; font-size: 14px; color: var(--espresso); }
+.cookie-pref-desc{ font-size: 12px; color: var(--caramel); margin-top: 4px; max-width: 300px; }
+.cookie-modal-actions{ display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+
+.switch-account{ position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+.switch-account input{ opacity: 0; width: 0; height: 0; }
+.switch-account .track{ position: absolute; inset: 0; background: var(--line); border-radius: 20px; transition: background .2s ease; cursor: pointer; }
+.switch-account .track::after{ content:""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform .2s ease; }
+.switch-account input:checked + .track{ background: var(--accent); }
+.switch-account input:checked + .track::after{ transform: translateX(18px); }
+.switch-account input:disabled + .track{ opacity: 0.5; cursor: not-allowed; }
+
+@media (max-width: 700px){
+  .cookie-banner{ flex-direction: column; align-items: stretch; text-align: left; }
+  .cookie-banner-actions{ justify-content: flex-start; }
+}

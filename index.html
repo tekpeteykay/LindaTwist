@@ -57,6 +57,7 @@
   </nav>
 
   <div class="nav-actions">
+    <a href="account.html" class="link-underline" id="navAccountLink" style="margin-right:24px;">My Account</a>
     <a href="#booking" class="nav-book">Book Appointment</a>
     <button class="hamburger" id="hamburger" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu">
       <span></span><span></span><span></span>
@@ -76,6 +77,7 @@
   </nav>
   <div class="mobile-menu-foot">
     <a href="#booking" class="btn btn-accent">Book Appointment <span class="arrow">→</span></a>
+    <a href="account.html" class="btn btn-outline on-dark">My Account</a>
     <div class="mobile-menu-social">
       <a href="#" id="mmInstagram">Instagram</a>
       <a href="#" id="mmFacebook">Facebook</a>
@@ -230,6 +232,17 @@
     <div class="why-grid" id="whyGrid"></div>
   </section>
 
+  <!-- ============ CURRENT OFFERS ============ -->
+  <section class="offers section-pad-sm" id="offers" style="display:none;">
+    <div class="container">
+      <div class="section-head" style="text-align:center; align-items:center;">
+        <span class="eyebrow reveal">Current Offers</span>
+        <h2 class="display-lg reveal">Deals worth booking for.</h2>
+      </div>
+      <div class="offers-grid" id="offersGrid"></div>
+    </div>
+  </section>
+
   <!-- ============ BOOKING ============ -->
   <section class="booking section-pad" id="booking">
     <div class="container">
@@ -299,6 +312,10 @@
               <label for="clientNotes">Notes / special requests</label>
               <textarea id="clientNotes" rows="3" placeholder="Anything we should know before your appointment?"></textarea>
             </div>
+            <div class="booking-field">
+              <label for="clientPromoCode">Promo or referral code (optional)</label>
+              <input type="text" id="clientPromoCode" placeholder="e.g. LINDA-7F3K" style="text-transform:uppercase;">
+            </div>
           </div>
 
           <!-- STEP 3: CONFIRMATION -->
@@ -339,6 +356,28 @@
         <h2 class="display-lg">Every look,<br>up close.</h2>
       </div>
       <div class="gallery-track" id="galleryTrack"></div>
+    </div>
+  </section>
+
+  <!-- ============ REFERRAL PROGRAM ============ -->
+  <section class="referral-promo section-pad-sm">
+    <div class="container">
+      <div class="referral-promo-shell">
+        <div class="referral-promo-copy">
+          <span class="eyebrow on-dark reveal">Share The Love</span>
+          <h2 class="display-md reveal" style="margin-top:12px;">Bring a friend. You both get treated.</h2>
+          <p class="body-md reveal" style="color:rgba(251,248,243,0.75); margin-top:12px; max-width:420px;">Create a free account to get your own referral code. Share it with a friend — when they book their first appointment with it, you'll both be treated to a thank-you reward at your next visit.</p>
+          <div class="reveal" style="margin-top:24px; display:flex; gap:14px; flex-wrap:wrap;">
+            <a href="account.html" class="btn btn-accent">Create Free Account <span class="arrow">→</span></a>
+            <a href="account.html" class="btn btn-outline on-dark">I Already Have a Code</a>
+          </div>
+        </div>
+        <div class="referral-promo-code reveal">
+          <span class="eyebrow on-dark">Your Code Could Look Like</span>
+          <div class="referral-sample-chip">LINDA-7F3K</div>
+          <p style="font-size:12.5px; color:rgba(251,248,243,0.6); margin-top:14px;">Sign in required to get your own — it takes under a minute.</p>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -435,13 +474,53 @@
     </div>
     <div class="footer-bottom">
       <span>&copy; <span id="year"></span> Linda Twist Braids &amp; Saloon Services. All rights reserved.</span>
-      <span>Site by Linda Twist Studio</span>
+      <span style="display:flex; gap:16px; align-items:center;">
+        <button id="footerCookieLink" style="color:inherit; font-size:11.5px; text-decoration:underline;">Cookie Preferences</button>
+        Site by Linda Twist Studio
+      </span>
     </div>
   </div>
 </footer>
 
 <!-- ============ MOBILE STICKY BOOKING BAR ============ -->
 <a href="#booking" class="mobile-book-bar">Book An Appointment</a>
+
+<!-- ============ COOKIE CONSENT ============ -->
+<div class="cookie-banner" id="cookieBanner">
+  <div class="cookie-banner-text">
+    <p><strong>We use cookies.</strong> Essential cookies keep the site and booking flow working. With your permission, we'd also like to use analytics cookies to understand how the site is used — nothing is set without your choice, and you can change your mind any time from the link in the footer.</p>
+  </div>
+  <div class="cookie-banner-actions">
+    <button class="link-underline" id="cookieManageBtn">Manage Preferences</button>
+    <button class="btn btn-outline btn-sm" id="cookieRejectBtn">Reject Non-Essential</button>
+    <button class="btn btn-primary btn-sm" id="cookieAcceptBtn">Accept All</button>
+  </div>
+</div>
+
+<!-- Cookie preferences modal, opened via "Manage Preferences" or the footer link -->
+<div class="cookie-modal-overlay" id="cookieModalOverlay">
+  <div class="cookie-modal">
+    <h3 class="display-md" style="font-size:1.3rem;">Cookie Preferences</h3>
+    <div class="cookie-pref-row">
+      <div>
+        <div class="cookie-pref-title">Essential</div>
+        <div class="cookie-pref-desc">Required for the site, booking flow, and account sign-in to work. Always on.</div>
+      </div>
+      <label class="switch-account"><input type="checkbox" checked disabled><span class="track"></span></label>
+    </div>
+    <div class="cookie-pref-row">
+      <div>
+        <div class="cookie-pref-title">Analytics</div>
+        <div class="cookie-pref-desc">Helps us understand which pages and services are most useful, so we can improve the site.</div>
+      </div>
+      <label class="switch-account"><input type="checkbox" id="cookieAnalyticsToggle"><span class="track"></span></label>
+    </div>
+    <div class="cookie-modal-actions">
+      <button class="btn btn-outline btn-sm" id="cookieModalCancel">Cancel</button>
+      <button class="btn btn-primary btn-sm" id="cookieModalSave">Save Preferences</button>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
@@ -452,4 +531,5 @@
 <script src="js/data-loader.js"></script>
 <script src="js/main.js"></script>
 </body>
+
 </html>

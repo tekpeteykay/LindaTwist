@@ -96,8 +96,24 @@
   async function saveBookingToSupabase(){
     if(!SUPABASE_CONFIGURED) return { saved: false, reason: "not-configured" };
 
+    // If a customer is signed in (via account.html, same browser/site),
+    // link this booking to their account so it shows in "My Bookings".
+    // Guarded with a real customer_accounts lookup — a signed-in STAFF
+    // member browsing the public site has no such row, and attaching
+    // their id would violate the foreign key, so we deliberately leave
+    // customer_id null for anyone who isn't a genuine customer account.
+    let customerId = null;
+    try{
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if(session){
+        const { data: acct } = await supabaseClient.from("customer_accounts").select("id").eq("id", session.user.id).single();
+        if(acct) customerId = acct.id;
+      }
+    } catch(err){ /* not signed in as a customer — booking proceeds as a guest */ }
+
     try{
       const { error } = await supabaseClient.from("bookings").insert({
+        customer_id: customerId,
         service_id: booking.service && booking.service.id ? booking.service.id : null,
         service_name: booking.service ? booking.service.name : "",
         category_name: booking.categoryLabel || "",
@@ -108,7 +124,8 @@
         appointment_time: booking.time,
         duration_text: booking.service ? booking.service.duration : "",
         price_text: booking.service ? booking.service.price : "",
-        customer_notes: booking.notes || null
+        customer_notes: booking.notes || null,
+        promo_code: booking.promoCode || null
       });
       if(error) throw error;
 
@@ -235,6 +252,57 @@
     document.getElementById("promoBannerText").innerHTML = `${promo.title} — <b>${promo.discount}</b>${promo.code ? ` · Code <b>${promo.code}</b>` : ""}`;
     banner.style.display = "flex";
     document.getElementById("promoBannerClose").addEventListener("click", ()=>{ banner.style.display = "none"; });
+  })();
+
+  /* ============================================================
+     COOKIE CONSENT
+     ------------------------------------------------------------
+     Stores the visitor's choice in localStorage so the banner
+     never reappears once they've decided. "Reject Non-Essential"
+     and "Accept All" both let the site function fully — nothing
+     here currently gates any analytics script (there isn't one
+     yet), but the structure is ready for one to check
+     localStorage.getItem("ltCookieConsent") before loading.
+     ============================================================ */
+  (function cookieConsent(){
+    const STORAGE_KEY = "ltCookieConsent";
+    const banner = document.getElementById("cookieBanner");
+    const modalOverlay = document.getElementById("cookieModalOverlay");
+    const analyticsToggle = document.getElementById("cookieAnalyticsToggle");
+
+    function getConsent(){
+      try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(e){ return null; }
+    }
+    function setConsent(consent){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(consent));
+      banner.classList.remove("show");
+      modalOverlay.classList.remove("show");
+    }
+
+    if(!getConsent()){
+      // Small delay so it doesn't compete with the page-load animation.
+      setTimeout(()=> banner.classList.add("show"), 1800);
+    }
+
+    document.getElementById("cookieAcceptBtn").addEventListener("click", ()=>{
+      setConsent({ essential: true, analytics: true, decidedAt: Date.now() });
+    });
+    document.getElementById("cookieRejectBtn").addEventListener("click", ()=>{
+      setConsent({ essential: true, analytics: false, decidedAt: Date.now() });
+    });
+
+    function openModal(){
+      const current = getConsent();
+      analyticsToggle.checked = current ? current.analytics : false;
+      modalOverlay.classList.add("show");
+    }
+    document.getElementById("cookieManageBtn").addEventListener("click", openModal);
+    document.getElementById("footerCookieLink").addEventListener("click", openModal);
+    document.getElementById("cookieModalCancel").addEventListener("click", ()=> modalOverlay.classList.remove("show"));
+    modalOverlay.addEventListener("click", (e)=>{ if(e.target === modalOverlay) modalOverlay.classList.remove("show"); });
+    document.getElementById("cookieModalSave").addEventListener("click", ()=>{
+      setConsent({ essential: true, analytics: analyticsToggle.checked, decidedAt: Date.now() });
+    });
   })();
 
   /* ============================================================
@@ -430,6 +498,50 @@
     });
   }, { threshold: 0.15 });
   revealItems.forEach(el=> io.observe(el));
+
+  /* ============================================================
+     CURRENT OFFERS SECTION — mirrors the admin's Promotions data.
+     Hidden entirely when there are no active promotions, so the
+     section never shows up empty.
+     ============================================================ */
+  (function applyOffers(){
+    const promos = cfg.promotions;
+    if(!promos || !promos.length) return;
+
+    const section = document.getElementById("offers");
+    const grid = document.getElementById("offersGrid");
+    section.style.display = "block";
+
+    grid.innerHTML = promos.map(p=>{
+      const discount = p.discountType === "percentage" ? `${p.discountAmount}% off` : `${cfg.business.currency === "USD" ? "$" : "£"}${p.discountAmount} off`;
+      return `
+        <div class="offer-card reveal">
+          ${p.image ? `<div class="img" style="background-image:url('${p.image}')"></div>` : ""}
+          <div class="body">
+            <h3>${p.title}</h3>
+            ${p.description ? `<p>${p.description}</p>` : ""}
+            <div class="code-row">
+              <span class="code">${discount}${p.code ? ` · ${p.code}` : ""}</span>
+              ${p.code ? `<button class="copy-btn" data-code="${p.code}">Copy Code</button>` : `<a href="#booking" class="copy-btn">Book Now</a>`}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    grid.querySelectorAll("[data-code]").forEach(btn=>{
+      btn.addEventListener("click", async ()=>{
+        try{
+          await navigator.clipboard.writeText(btn.dataset.code);
+          const original = btn.textContent;
+          btn.textContent = "Copied!";
+          setTimeout(()=> btn.textContent = original, 1800);
+        } catch(err){ /* clipboard not available — the code is still visible to copy manually */ }
+      });
+    });
+
+    grid.querySelectorAll(".offer-card").forEach(el=> io.observe(el));
+  })();
 
   /* ============================================================
      GSAP / ScrollTrigger setup
@@ -876,6 +988,22 @@
     goToStep(1);
   };
 
+  // "Book Again" from the customer account dashboard: reads a one-time
+  // handoff written to localStorage, pre-fills the booking flow, then
+  // clears it so a later visit doesn't accidentally reuse stale data.
+  (function checkForReorder(){
+    const raw = localStorage.getItem("ltReorder");
+    if(!raw) return;
+    localStorage.removeItem("ltReorder");
+    try{
+      const { service, category } = JSON.parse(raw);
+      if(service && service.name){
+        window.location.hash = "#booking";
+        setTimeout(()=> window.preselectBookingService(service, category || ""), 300);
+      }
+    } catch(err){ /* malformed handoff — ignore */ }
+  })();
+
   // Time slots — real availability once Supabase is connected: booked
   // times for the selected date are fetched and disabled live.
   const ALL_SLOTS = ["9:00 AM","10:00 AM","11:30 AM","1:00 PM","2:30 PM","4:00 PM","5:30 PM"];
@@ -976,6 +1104,7 @@
       if(!name || !email || !phone){ alert("Please fill in your name, email and phone to confirm."); return false; }
       booking.name = name; booking.email = email; booking.phone = phone;
       booking.notes = document.getElementById("clientNotes").value.trim();
+      booking.promoCode = document.getElementById("clientPromoCode").value.trim().toUpperCase() || null;
     }
     return true;
   }
@@ -1017,6 +1146,7 @@
       <div class="row"><span>Time</span><span>${booking.time || ""}</span></div>
       <div class="row"><span>Duration</span><span>${booking.service ? booking.service.duration : ""}</span></div>
       <div class="row"><span>Price</span><span>From ${booking.service ? booking.service.price : ""}</span></div>
+      ${booking.promoCode ? `<div class="row"><span>Code applied</span><span>${booking.promoCode}</span></div>` : ""}
       <div class="row"><span>Salon</span><span>${cfg.business.address}</span></div>
     `;
     document.getElementById("confirmAddress").textContent = cfg.business.address;

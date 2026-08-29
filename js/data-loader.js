@@ -46,7 +46,6 @@ window.LINDA_TWIST_READY = (async function loadDynamicContent(){
       supabaseClient.from("promotions").select("*").eq("active", true)
         .or(`start_date.is.null,start_date.lte.${todayStr}`)
         .or(`end_date.is.null,end_date.gte.${todayStr}`)
-        .limit(1)
     ]);
 
     // ---------- Services + categories ----------
@@ -135,8 +134,18 @@ window.LINDA_TWIST_READY = (async function loadDynamicContent(){
       SITE_CONFIG.nav = navRes.data.map(n => ({ label: n.label, href: n.href }));
     }
 
-    // ---------- Active promotion (banner) ----------
+    // ---------- Active promotions (banner shows the first one; the
+    // "Current Offers" section on the homepage shows all of them) ----------
     if(promoRes.data && promoRes.data.length){
+      SITE_CONFIG.promotions = promoRes.data.map(p => ({
+        title: p.title,
+        description: p.description || "",
+        discountType: p.discount_type,
+        discountAmount: p.discount_amount,
+        code: p.promo_code || null,
+        image: p.image_url || null
+      }));
+
       const p = promoRes.data[0];
       const discount = p.discount_type === "percentage" ? `${p.discount_amount}% off` : `${currencySymbol(SITE_CONFIG.business.currency)}${p.discount_amount} off`;
       SITE_CONFIG._promo = {

@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Account — Linda Twist</title>
+<meta name="robots" content="noindex, follow">
+
+<link rel="icon" type="image/png" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,340;0,9..144,460;0,9..144,480;1,9..144,460&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/account.css">
+</head>
+<body class="account-body">
+
+<div id="configWarning" class="account-config-warning" style="display:none;">
+  ⚠️ Supabase isn't configured yet — see <code>js/supabase-config.js</code> and <code>README-CMS.md</code>.
+</div>
+
+<!-- ============ MINIMAL BRANDED HEADER ============ -->
+<header class="account-nav">
+  <a href="index.html" class="account-nav-logo">
+    <img src="assets/logo.png" alt="Linda Twist">
+    <span>Linda Twist</span>
+  </a>
+  <div class="account-nav-right">
+    <a href="index.html" class="link-underline">← Back to site</a>
+    <button id="accountLogoutBtn" class="btn btn-outline btn-sm" style="display:none;">Sign Out</button>
+  </div>
+</header>
+
+<!-- ============ AUTH: LOGIN / SIGNUP ============ -->
+<main class="auth-shell" id="authShell">
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login">Sign In</button>
+      <button class="auth-tab" data-tab="signup">Create Account</button>
+    </div>
+
+    <div class="auth-error" id="authError"></div>
+    <div class="auth-success" id="authSuccess"></div>
+
+    <!-- LOGIN -->
+    <form id="loginForm" class="auth-form active">
+      <div class="booking-field">
+        <label for="liEmail">Email</label>
+        <input type="email" id="liEmail" required autocomplete="username">
+      </div>
+      <div class="booking-field">
+        <label for="liPassword">Password</label>
+        <div style="position:relative;">
+          <input type="password" id="liPassword" required autocomplete="current-password">
+          <button type="button" class="toggle-pw-inline" id="liTogglePw">Show</button>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; margin-bottom:18px;">
+        <a href="#" class="link-underline" id="forgotPwLink" style="font-size:12px;">Forgot password?</a>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Sign In</button>
+    </form>
+
+    <!-- FORGOT PASSWORD -->
+    <form id="resetForm" class="auth-form">
+      <p class="body-md" style="margin-bottom:16px;">Enter your email and we'll send you a reset link.</p>
+      <div class="booking-field">
+        <label for="resetEmail">Email</label>
+        <input type="email" id="resetEmail" required>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Send Reset Link</button>
+      <p style="text-align:center; margin-top:16px;"><a href="#" class="link-underline" id="backToLoginLink" style="font-size:12px;">← Back to sign in</a></p>
+    </form>
+
+    <!-- SIGNUP -->
+    <form id="signupForm" class="auth-form">
+      <div class="booking-field-row">
+        <div class="booking-field">
+          <label for="suName">Full name</label>
+          <input type="text" id="suName" required autocomplete="name">
+        </div>
+        <div class="booking-field">
+          <label for="suPhone">Phone (optional)</label>
+          <input type="tel" id="suPhone" autocomplete="tel">
+        </div>
+      </div>
+      <div class="booking-field">
+        <label for="suEmail">Email</label>
+        <input type="email" id="suEmail" required autocomplete="username">
+      </div>
+      <div class="booking-field">
+        <label for="suPassword">Password</label>
+        <div style="position:relative;">
+          <input type="password" id="suPassword" required minlength="6" autocomplete="new-password">
+          <button type="button" class="toggle-pw-inline" id="suTogglePw">Show</button>
+        </div>
+      </div>
+      <div class="booking-field">
+        <label for="suReferral">Referral code (optional)</label>
+        <input type="text" id="suReferral" placeholder="e.g. LINDA-7F3K" style="text-transform:uppercase;">
+        <p class="field-hint-account" id="suReferralHint"></p>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Create Account</button>
+    </form>
+  </div>
+</main>
+
+<!-- ============ DASHBOARD (shown after login) ============ -->
+<div class="dash-shell" id="dashShell" style="display:none;">
+  <div class="container">
+    <div class="dash-welcome">
+      <span class="eyebrow">My Account</span>
+      <h1 class="display-md" id="dashWelcomeName">Welcome back</h1>
+    </div>
+
+    <nav class="dash-tabs" id="dashTabs">
+      <button data-view="overview" class="active">Overview</button>
+      <button data-view="bookings">My Bookings</button>
+      <button data-view="referrals">Referrals</button>
+      <button data-view="promotions">Offers</button>
+      <button data-view="profile">My Details</button>
+    </nav>
+
+    <!-- ===== OVERVIEW ===== -->
+    <section class="dash-view active" id="dview-overview">
+      <div class="dash-grid-2">
+        <div class="dash-card" id="upcomingCard">
+          <span class="eyebrow">Next Appointment</span>
+          <div id="upcomingContent" class="dash-card-body"></div>
+        </div>
+        <div class="dash-card">
+          <span class="eyebrow">Your Referral Code</span>
+          <div class="dash-card-body">
+            <div class="referral-code-chip" id="overviewReferralCode">—</div>
+            <button class="link-underline" id="overviewCopyBtn" style="margin-top:12px; font-size:12px;">Copy Code</button>
+          </div>
+        </div>
+      </div>
+      <div class="dash-card" style="margin-top:20px;">
+        <span class="eyebrow">Quick Links</span>
+        <div class="dash-quicklinks">
+          <a href="index.html#booking" class="btn btn-outline btn-sm">Book a New Appointment</a>
+          <button class="btn btn-outline btn-sm" data-goto="bookings">View My Bookings</button>
+          <button class="btn btn-outline btn-sm" data-goto="promotions">See Current Offers</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== MY BOOKINGS ===== -->
+    <section class="dash-view" id="dview-bookings">
+      <div class="dash-subtabs" id="bookingSubtabs">
+        <button data-sub="upcoming" class="active">Upcoming</button>
+        <button data-sub="past">Past</button>
+      </div>
+      <div id="bookingsListWrap"></div>
+    </section>
+
+    <!-- ===== REFERRALS ===== -->
+    <section class="dash-view" id="dview-referrals">
+      <div class="dash-card">
+        <span class="eyebrow">Share &amp; Earn</span>
+        <h2 class="display-md" style="margin:12px 0;">Give your friends a reason to book.</h2>
+        <p class="body-md">Share your personal code — when a friend signs up and books their first appointment with it, you'll both be treated to a thank-you reward at your next visit.</p>
+        <div class="referral-code-chip" id="referralsCodeBig" style="margin:22px 0 10px;">—</div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" id="referralsCopyBtn">Copy Code</button>
+          <button class="btn btn-outline btn-sm" id="referralsShareBtn">Copy Shareable Link</button>
+        </div>
+      </div>
+      <div class="dash-card" style="margin-top:20px;">
+        <span class="eyebrow">Your Referrals</span>
+        <div id="referralsStats" class="dash-card-body"></div>
+      </div>
+    </section>
+
+    <!-- ===== PROMOTIONS ===== -->
+    <section class="dash-view" id="dview-promotions">
+      <div id="dashPromotionsWrap" class="dash-card-grid"></div>
+    </section>
+
+    <!-- ===== MY DETAILS ===== -->
+    <section class="dash-view" id="dview-profile">
+      <div class="dash-card" style="max-width:520px;">
+        <span class="eyebrow">Your Details</span>
+        <form id="profileForm" style="margin-top:16px;">
+          <div class="booking-field">
+            <label for="pfName">Full name</label>
+            <input type="text" id="pfName">
+          </div>
+          <div class="booking-field">
+            <label for="pfPhone">Phone</label>
+            <input type="tel" id="pfPhone">
+          </div>
+          <div class="booking-field">
+            <label>Email</label>
+            <input type="email" id="pfEmail" disabled>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+          <span class="field-hint-account" id="profileSaveStatus" style="margin-left:12px;"></span>
+        </form>
+      </div>
+
+      <div class="dash-card" style="max-width:520px; margin-top:20px;">
+        <span class="eyebrow">Change Password</span>
+        <form id="passwordForm" style="margin-top:16px;">
+          <div class="booking-field">
+            <label for="pfNewPassword">New password</label>
+            <input type="password" id="pfNewPassword" minlength="6" required>
+          </div>
+          <button type="submit" class="btn btn-outline btn-sm">Update Password</button>
+          <span class="field-hint-account" id="passwordSaveStatus" style="margin-left:12px;"></span>
+        </form>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/config.js"></script>
+<script src="account/common.js"></script>
+<script src="account/auth.js"></script>
+<script src="account/dashboard.js"></script>
+<script src="account/bookings.js"></script>
+<script src="account/referrals.js"></script>
+<script src="account/promotions.js"></script>
+<script src="account/profile.js"></script>
+<script src="account/app.js"></script>
+</body>
+</html>

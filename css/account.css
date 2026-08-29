@@ -1,0 +1,250 @@
+/* ============================================================
+   ACCOUNT / CUSTOMER DASHBOARD
+   Uses the same tokens as css/style.css (cream/espresso/accent,
+   Fraunces + Inter) — this should read as an extension of the
+   public brand, not a management console like admin.css.
+   ============================================================ */
+
+.account-body{ background: var(--cream); }
+
+.account-config-warning{
+  background: var(--accent-tint);
+  color: var(--accent-dark);
+  padding: 12px 24px;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ---------------- Minimal header ---------------- */
+.account-nav{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px var(--gutter);
+  border-bottom: 1px solid var(--line);
+  background: var(--ivory);
+}
+.account-nav-logo{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--espresso);
+}
+.account-nav-logo img{ width: 30px; height: 30px; }
+.account-nav-right{ display: flex; align-items: center; gap: 22px; }
+
+/* ---------------- Auth card ---------------- */
+.auth-shell{
+  min-height: calc(100vh - 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px var(--gutter);
+}
+.auth-card{
+  width: 100%;
+  max-width: 440px;
+  background: var(--ivory);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 40px clamp(24px, 5vw, 44px);
+}
+.auth-tabs{
+  display: flex;
+  gap: 4px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--line);
+}
+.auth-tab{
+  flex: 1;
+  padding: 12px 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--caramel);
+  position: relative;
+  transition: color .3s var(--ease);
+}
+.auth-tab::after{
+  content:"";
+  position: absolute;
+  left: 0; bottom: -1px;
+  width: 100%; height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transition: transform .3s var(--ease);
+}
+.auth-tab.active{ color: var(--espresso); }
+.auth-tab.active::after{ transform: scaleX(1); }
+
+.auth-form{ display: none; }
+.auth-form.active{ display: block; animation: fadeUp .4s var(--ease); }
+
+.auth-error, .auth-success{
+  display: none;
+  padding: 11px 14px;
+  border-radius: 4px;
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+.auth-error.show{ display: block; background: rgba(178,74,63,0.1); color: #8c3b32; }
+.auth-success.show{ display: block; background: rgba(180,119,112,0.12); color: var(--accent-dark); }
+
+.toggle-pw-inline{
+  position: absolute;
+  right: 12px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--caramel);
+}
+
+.field-hint-account{
+  font-size: 12px;
+  color: var(--caramel);
+  margin-top: 6px;
+  min-height: 14px;
+}
+.field-hint-account.valid{ color: var(--accent-dark); }
+.field-hint-account.invalid{ color: #8c3b32; }
+
+/* ---------------- Dashboard shell ---------------- */
+.dash-shell{ padding: clamp(30px, 5vw, 60px) 0 100px; }
+.dash-welcome{ margin-bottom: 30px; }
+.dash-welcome h1{ margin-top: 8px; }
+
+.dash-tabs{
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 32px;
+  overflow-x: auto;
+}
+.dash-tabs button{
+  padding: 12px 18px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--caramel);
+  white-space: nowrap;
+  position: relative;
+}
+.dash-tabs button::after{
+  content:"";
+  position: absolute;
+  left: 0; bottom: -1px;
+  width: 100%; height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transition: transform .3s var(--ease);
+}
+.dash-tabs button.active{ color: var(--espresso); }
+.dash-tabs button.active::after{ transform: scaleX(1); }
+
+.dash-view{ display: none; }
+.dash-view.active{ display: block; animation: fadeUp .4s var(--ease); }
+
+.dash-grid-2{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 760px){ .dash-grid-2{ grid-template-columns: 1fr; } }
+
+.dash-card{
+  background: var(--ivory);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 26px 28px;
+}
+.dash-card-body{ margin-top: 14px; }
+.dash-card-grid{ display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 18px; }
+
+.dash-quicklinks{ display: flex; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+
+.referral-code-chip{
+  display: inline-flex;
+  align-items: center;
+  padding: 14px 22px;
+  background: var(--accent-tint);
+  color: var(--accent-dark);
+  border-radius: 4px;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  letter-spacing: 0.04em;
+}
+
+.dash-subtabs{ display: flex; gap: 10px; margin-bottom: 20px; }
+.dash-subtabs button{
+  padding: 8px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid var(--line);
+  color: var(--caramel);
+  border-radius: 20px;
+  transition: all .3s var(--ease);
+}
+.dash-subtabs button.active{ background: var(--espresso); border-color: var(--espresso); color: var(--ivory); }
+
+/* ---------------- Booking cards (customer view) ---------------- */
+.cbooking-card{
+  background: var(--ivory);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 20px 24px;
+  margin-bottom: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.cbooking-info .name{ font-family: var(--font-display); font-size: 1.15rem; }
+.cbooking-info .meta{ font-size: 12.5px; color: var(--caramel); margin-top: 4px; }
+.cbooking-actions{ display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* ---------------- Promotion cards (customer view) ---------------- */
+.cpromo-card{
+  background: var(--ivory);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.cpromo-card .img{ height: 140px; background: var(--cream) center/cover no-repeat; }
+.cpromo-card .body{ padding: 18px 20px; }
+.cpromo-card .body h3{ font-family: var(--font-display); font-size: 1.15rem; }
+.cpromo-card .body p{ font-size: 13px; color: var(--chocolate); margin-top: 8px; }
+.cpromo-card .code-row{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.cpromo-card .code{ font-family: var(--font-display); font-weight: 700; color: var(--accent-dark); }
+
+@keyframes fadeUp{ from{ opacity:0; transform: translateY(10px); } to{ opacity:1; transform:none; } }
+
+/* ---------------- Toasts (matches the account brand, not admin.css) ---------------- */
+.toast-host{ position: fixed; bottom: 24px; right: 24px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
+.toast{
+  background: var(--espresso);
+  color: var(--ivory);
+  padding: 13px 20px;
+  border-radius: 3px;
+  font-size: 13.5px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all .3s ease;
+  max-width: 320px;
+}
+.toast.show{ opacity: 1; transform: translateY(0); }
+.toast-error{ background: #8c3b32; }
+.toast-success{ background: var(--espresso); }
