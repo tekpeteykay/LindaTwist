@@ -16,8 +16,8 @@
  * frontend code — that key bypasses Row Level Security entirely.
  * ============================================================
  */
-const SUPABASE_URL = "";       // PLACEHOLDER — e.g. "https://abcxyz.supabase.co"
-const SUPABASE_ANON_KEY = "";  // PLACEHOLDER — a long public anon key
+const SUPABASE_URL = "https://umggouygjbbcleiwgqbo.supabase.co";       // PLACEHOLDER — e.g. "https://abcxyz.supabase.co"
+const SUPABASE_ANON_KEY = "sb_publishable_b3z_c5JUKydtFh_taNfn2w_stg48y15";  // PLACEHOLDER — a long public anon key
 
 const SUPABASE_CONFIGURED = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 
