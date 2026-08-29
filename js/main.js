@@ -27,8 +27,13 @@
      EMAIL CONFIRMATIONS (EmailJS)
      ============================================================ */
   const emailCfg = cfg.emailjs || {};
-  const emailIsConfigured = !!(emailCfg.serviceId && emailCfg.clientTemplateId && emailCfg.publicKey);
-  if(emailIsConfigured && window.emailjs){
+  // Base setup: just needs a service + public key. Each email flow
+  // below then checks its own specific template ID independently,
+  // so e.g. message notifications work even if booking templates
+  // were never filled in, and vice versa.
+  const emailBaseConfigured = !!(emailCfg.serviceId && emailCfg.publicKey);
+  const emailIsConfigured = emailBaseConfigured && !!emailCfg.clientTemplateId; // kept for the booking flow specifically
+  if(emailBaseConfigured && window.emailjs){
     emailjs.init({ publicKey: emailCfg.publicKey });
   }
 
@@ -114,6 +119,47 @@
       console.error("[Linda Twist] Saving booking to Supabase failed:", err);
       return { saved: false, reason: "save-error", error: err };
     }
+  }
+
+  /**
+   * Sends the two message/enquiry emails via EmailJS: a notification
+   * to the salon owner, and (if configured) an auto-reply to whoever
+   * submitted the contact form. Both are optional and independent —
+   * never throws, since the message is already safely saved in
+   * Supabase regardless of whether either email goes out.
+   */
+  async function sendMessageEmails({ name, email, phone, message }){
+    if(!emailBaseConfigured || !window.emailjs) return { sent: false, reason: "not-configured" };
+
+    const templateParams = {
+      sender_name: name,
+      sender_email: email,
+      sender_phone: phone || "—",
+      message,
+      salon_name: cfg.business.fullName
+    };
+
+    let ownerSent = false, clientSent = false;
+
+    if(emailCfg.messageOwnerTemplateId){
+      try{
+        await emailjs.send(emailCfg.serviceId, emailCfg.messageOwnerTemplateId, templateParams);
+        ownerSent = true;
+      } catch(err){
+        console.error("[Linda Twist] Owner enquiry notification failed:", err);
+      }
+    }
+
+    if(emailCfg.messageClientTemplateId){
+      try{
+        await emailjs.send(emailCfg.serviceId, emailCfg.messageClientTemplateId, { ...templateParams, to_email: email });
+        clientSent = true;
+      } catch(err){
+        console.error("[Linda Twist] Enquiry auto-reply failed:", err);
+      }
+    }
+
+    return { sent: ownerSent || clientSent, ownerSent, clientSent };
   }
 
   document.getElementById("year").textContent = new Date().getFullYear();
@@ -215,6 +261,7 @@
           status.textContent = "Thanks — we'll get back to you soon.";
           form.reset();
           window.logActivity && window.logActivity("message_received", `New enquiry from ${name}`);
+          sendMessageEmails({ name, email, phone, message }); // fire-and-forget — the message is already saved either way
         } catch(err){
           console.error(err);
           status.textContent = `Couldn't send that just now — please email us directly at ${cfg.business.email}.`;
