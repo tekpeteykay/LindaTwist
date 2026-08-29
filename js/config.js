@@ -69,7 +69,7 @@ const SITE_CONFIG = {
    */
   emailjs: {
     serviceId: "",         // PLACEHOLDER — e.g. "service_abc1234"
-    clientTemplateId: "",  // PLACEHOLDER — e.g. "template_client_confirm"
+    clientTemplateId: "template_pgtyllg",  // PLACEHOLDER — e.g. "template_client_confirm"
     ownerTemplateId: "",   // PLACEHOLDER, optional — e.g. "template_owner_notify"
     publicKey: ""          // PLACEHOLDER — e.g. "AbCdEfGhIjKlMnOp"
   },
