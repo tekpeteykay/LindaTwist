@@ -68,10 +68,10 @@ const SITE_CONFIG = {
    * works end-to-end in the browser — it just won't send real email.
    */
   emailjs: {
-    serviceId: "",         // PLACEHOLDER — e.g. "service_abc1234"
+    serviceId: "service_b12cvgk",         // PLACEHOLDER — e.g. "service_abc1234"
     clientTemplateId: "template_pgtyllg",  // PLACEHOLDER — e.g. "template_client_confirm"
     ownerTemplateId: "",   // PLACEHOLDER, optional — e.g. "template_owner_notify"
-    publicKey: ""          // PLACEHOLDER — e.g. "AbCdEfGhIjKlMnOp"
+    publicKey: "pB2mVVczIbYf6HhIU"          // PLACEHOLDER — e.g. "AbCdEfGhIjKlMnOp"
   },
 
   nav: [
