@@ -71,8 +71,8 @@ const SITE_CONFIG = {
     serviceId: "service_b12cvgk",         // PLACEHOLDER — e.g. "service_abc1234"
     clientTemplateId: "template_pgtyllg",  // PLACEHOLDER — e.g. "template_client_confirm"
     ownerTemplateId: "",   // PLACEHOLDER, optional — e.g. "template_owner_notify"
-    publicKey: "pB2mVVczIbYf6HhIU"          // PLACEHOLDER — e.g. "AbCdEfGhIjKlMnOp"
-    messageOwnerTemplateId: "",
+    publicKey: "pB2mVVczIbYf6HhIU",          // PLACEHOLDER — e.g. "AbCdEfGhIjKlMnOp"
+    messageOwnerTemplateId: "template_jpqqmn1",
     messageClientTemplateId: "",
   },
 
