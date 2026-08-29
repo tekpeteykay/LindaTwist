@@ -185,5 +185,69 @@ const Admin = (function(){
   function registerView(name, renderFn){ views[name] = renderFn; }
   function renderView(name){ if(views[name]) views[name](); }
 
-  return { el, esc, fmtDate, fmtDateTime, money, toast, confirmDialog, openModal, requireSession, logout, registerView, renderView, uploadImage, wireImageDrop };
+  /* ---------------- Client status-update emails ---------------- */
+  // One shared template (the same clientTemplateId used for the initial
+  // booking confirmation) covers every status — the wording just adapts
+  // via the status_headline / status_body merge fields.
+  const STATUS_MESSAGES = {
+    pending:   { headline: "Your appointment request has been received.", body: "We'll confirm your appointment shortly." },
+    confirmed: { headline: "Your appointment is confirmed!", body: "We can't wait to see you — if anything changes, just get in touch." },
+    completed: { headline: "Thanks for visiting!", body: "We hope you love your new look — we'd love to see you again soon." },
+    cancelled: { headline: "Your appointment has been cancelled.", body: "If this wasn't expected, or you'd like to rebook, please contact us." },
+    no_show:   { headline: "We missed you.", body: "You were marked as a no-show for this appointment — please get in touch if you'd like to rebook." }
+  };
+
+  let emailjsReady = false;
+  function ensureEmailjsInit(){
+    const cfg = (typeof SITE_CONFIG !== "undefined" ? SITE_CONFIG.emailjs : null) || {};
+    if(!emailjsReady && cfg.publicKey && window.emailjs){
+      emailjs.init({ publicKey: cfg.publicKey });
+      emailjsReady = true;
+    }
+    return !!(cfg.serviceId && cfg.clientTemplateId && cfg.publicKey && window.emailjs);
+  }
+
+  /**
+   * Emails the client when their booking's status changes (from any admin
+   * action: the detail drawer, a calendar click, etc). Silently does
+   * nothing if EmailJS isn't configured, or if the status didn't actually
+   * change — never blocks the dashboard action it's called from.
+   */
+  async function sendClientStatusEmail(booking, newStatus){
+    if(!ensureEmailjsInit()) return { sent: false, reason: "not-configured" };
+    const msg = STATUS_MESSAGES[newStatus];
+    if(!msg) return { sent: false, reason: "unknown-status" };
+
+    const cfg = SITE_CONFIG.emailjs;
+    const business = (SITE_CONFIG || {}).business || {};
+    const dateLabel = booking.appointment_date
+      ? new Date(booking.appointment_date + "T00:00").toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+      : "";
+
+    try{
+      await emailjs.send(cfg.serviceId, cfg.clientTemplateId, {
+        to_email: booking.customer_email,
+        client_name: booking.customer_name,
+        client_phone: booking.customer_phone || "",
+        service_name: booking.service_name || "",
+        service_category: booking.category_name || "",
+        date: dateLabel,
+        time: booking.appointment_time || "",
+        duration: booking.duration_text || "",
+        price: booking.price_text || "",
+        salon_name: business.fullName || "",
+        salon_address: business.address || "",
+        salon_phone: business.phone || "",
+        notes: booking.customer_notes || "—",
+        status_headline: msg.headline,
+        status_body: msg.body
+      });
+      return { sent: true };
+    } catch(err){
+      console.error("[Linda Twist Admin] Client status email failed:", err);
+      return { sent: false, reason: "send-error", error: err };
+    }
+  }
+
+  return { el, esc, fmtDate, fmtDateTime, money, toast, confirmDialog, openModal, requireSession, logout, registerView, renderView, uploadImage, wireImageDrop, sendClientStatusEmail };
 })();

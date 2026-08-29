@@ -66,7 +66,9 @@
       salon_name: cfg.business.fullName,
       salon_address: cfg.business.address,
       salon_phone: cfg.business.phone,
-      notes: booking.notes || "—"
+      notes: booking.notes || "—",
+      status_headline: "Your appointment is confirmed!",
+      status_body: "We can't wait to see you — if anything changes, just get in touch."
     };
 
     try{

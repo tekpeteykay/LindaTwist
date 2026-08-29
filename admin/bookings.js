@@ -111,9 +111,16 @@
         payment_status: form.querySelector("#bdPayment").value,
         admin_notes: form.querySelector("#bdAdminNotes").value.trim()
       };
+      const statusChanged = payload.status !== b.status;
       const { error } = await supabaseClient.from("bookings").update(payload).eq("id", b.id);
       if(error){ Admin.toast(error.message, "error"); return; }
-      Admin.toast("Booking updated.");
+
+      let emailResult = { sent: false };
+      if(statusChanged){
+        emailResult = await Admin.sendClientStatusEmail({ ...b, ...payload }, payload.status);
+      }
+
+      Admin.toast("Booking updated." + (statusChanged && emailResult.sent ? " Customer notified by email." : ""));
       logActivity("booking_updated", `${b.customer_name}'s booking marked ${STATUS_LABEL[payload.status]}.`);
       close();
       renderBookings();
@@ -128,7 +135,11 @@
       if(!ok) return;
       const { error } = await supabaseClient.from("bookings").update({ status: "cancelled" }).eq("id", b.id);
       if(error){ Admin.toast(error.message, "error"); return; }
-      Admin.toast("Appointment cancelled.");
+      let emailResult = { sent: false };
+      if(b.status !== "cancelled"){
+        emailResult = await Admin.sendClientStatusEmail(b, "cancelled");
+      }
+      Admin.toast("Appointment cancelled." + (emailResult.sent ? " Customer notified by email." : ""));
       close();
       renderBookings();
     });
